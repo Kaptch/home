@@ -124,9 +124,9 @@ in
     yubikey-personalization-gui
     yubioath-desktop
     gnome3.adwaita-icon-theme
-    coqPackages.stdpp
-    coqPackages.iris
-    coq
+    coqPackages_8_14.stdpp
+    coqPackages_8_14.iris
+    coq_8_14
     python-with-my-packages
     (dwarf-fortress-packages.dwarf-fortress-full.override {
       dfVersion = "0.47.05";
