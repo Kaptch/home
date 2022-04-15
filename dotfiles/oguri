@@ -1,0 +1,5 @@
+[output *]
+image=/home/kaptch/Pictures/wallpapers/Return_waneella.gif
+filter=fast
+scaling-mode=fill
+anchor=center
