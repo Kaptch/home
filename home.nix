@@ -12,7 +12,7 @@ let
   # Tex with dependent packages
   tex = (pkgs.texlive.combine {
     inherit (pkgs.texlive) scheme-medium
-      gentium-tug pbox scalerel dashbox xifthen ifmtarg;
+      gentium-tug pbox scalerel dashbox xifthen ifmtarg biblatex cleveref biber;
   });
 
   # Extra python packages
@@ -25,6 +25,18 @@ let
   keepass-with-plugins = pkgs.keepass.override {
     plugins = [ pkgs.keepass-keepassrpc pkgs.keepass-keeagent ];
   };
+
+  gajim = pkgs.gajim.override { enableOmemoPluginDependencies = true; enableJingle = true; };
+
+  pass = pkgs.pass.override { waylandSupport = true; };
+  pass-ext = pass.withExtensions (ext: [ ext.pass-import
+                                         ext.pass-update
+                                         ext.pass-tomb]);
+
+  # Mattermost
+  mattermost-with-datadir = pkgs.writeShellScriptBin "mattermost-with-datadir" ''
+    exec mattermost-desktop -d ~/Mattermost
+  '';
 in
 
 {
@@ -42,11 +54,21 @@ in
       ./wlogout.nix
     ];
 
-  programs.home-manager.enable = true;  
+  programs.home-manager.enable = true;
+  programs.gpg.enable = true;
+  programs.browserpass.enable = true;  
   
-  nixpkgs.config = {
-    allowUnfree = true;
-  };  
+  nixpkgs.config.allowUnfreePredicate =
+    pkg: builtins.elem (lib.getName pkg) [ "steam-original"
+                                           "steam-runtime"
+                                           "steam"
+                                           "zoom"
+                                           "discord"
+                                           "spotify"
+                                           "spotify-unwrapped"
+                                           "via"
+                                           "dwarf-fortress"
+                                         ];
 
   home.username = "kaptch";
   home.homeDirectory = "/home/kaptch";
@@ -59,12 +81,17 @@ in
     imagemagick
     vlc
     firefox-wayland
+    mutt
     parted
+    syncthingtray
     xz
     agda
     rustup
     opam
     discord
+    pass-ext
+    pwgen
+    qtpass
     steam
     tdesktop
     signal-desktop
@@ -82,41 +109,53 @@ in
     bemenu
     grim
     wdisplays
-    # oguri
+    element-desktop
+    wireguard-tools
     start-sway
     imv
     mpv
     slurp
+    pidgin
     brightnessctl
     font-awesome
     wev
     sway-contrib.grimshot
     ranger
     pcmanfm
+    ardour
     nwg-launchers
     pavucontrol
     pamixer
     spotify
     mattermost-desktop
+    mattermost-with-datadir
+    samba
     xdg-utils
     blender
     transmission
+    transmission-remote-gtk
     tex
     playerctl
     pulseaudio
     okular
     via
+    qmk
+    vial
+    gtklp
     wlogout
     xdg-desktop-portal
+    xdg-desktop-portal-wlr
     wf-recorder
-    helvum
-    gcc
+    helvum    
     lutris
-    davmail
-    nextcloud-client
+    mkchromecast
+    davmail    
+    system-config-printer
+    # nextcloud-client
     networkmanagerapplet
     tor-browser-bundle-bin
     i2p
+    binutils.bintools # TODO: remove
     keepass-with-plugins
     yubikey-manager
     yubikey-personalization

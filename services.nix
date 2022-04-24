@@ -8,10 +8,29 @@
     enable = true;
   };
 
+  services.syncthing.enable = true;
+  services.syncthing.tray.enable = true;
+
+  programs.ssh.enable = true;
+  programs.ssh.forwardAgent = true;
+  programs.ssh.extraConfig = ''
+    Host gpgtunnel
+        HostName localhost
+        StreamLocalBindUnlink yes
+        Port 10022
+        User kaptch
+        RemoteForward /run/user/1000/gnupg/S.gpg-agent /run/user/1000/gnupg/S.gpg-agent.extra        
+  '';
+  # RemoteForward /home/kaptch/.gnupg/S.gpg-agent.ssh /home/kaptch/.gnupg/S.gpg-agent.ssh
+  
   services.gpg-agent = {
     enable = true;
     enableSshSupport = true;
-    pinentryFlavor = "gtk2";
+    pinentryFlavor = "curses";
+    #pinentryFlavor = "gtk2";
+    enableExtraSocket = true;
+    # extraConfig = ''
+    # '';
   };
   
   systemd.user.sockets.dbus = {
@@ -143,25 +162,25 @@
     };
   };
 
-  systemd.user.services.nextcloud = {
-    Unit = {
-      Description = "Nextcloud client";
-      BindsTo = [ "sway-session.target" ];
-      After = [ "sway-session.target" "network.target" ];
-      ConditionEnvironment = [ "WAYLAND_DISPLAY" ];
-    };
-    Service = {
-      Type = "simple";
-      ExecStart = "${pkgs.nextcloud-client}/bin/nextcloud --background";
-      ExecReload = "/run/current-system/sw/bin/kill -HUP $MAINPID";
-      KillMode = "process";
-      RestartSec = 5;
-      Restart = "always";
-    };
-    Install = {
-      WantedBy = [ "sway-session.target" ];
-    };
-  };
+  # systemd.user.services.nextcloud = {
+  #   Unit = {
+  #     Description = "Nextcloud client";
+  #     BindsTo = [ "sway-session.target" ];
+  #     After = [ "sway-session.target" "network.target" ];
+  #     ConditionEnvironment = [ "WAYLAND_DISPLAY" ];
+  #   };
+  #   Service = {
+  #     Type = "simple";
+  #     ExecStart = "${pkgs.nextcloud-client}/bin/nextcloud --background";
+  #     ExecReload = "/run/current-system/sw/bin/kill -HUP $MAINPID";
+  #     KillMode = "process";
+  #     RestartSec = 5;
+  #     Restart = "always";
+  #   };
+  #   Install = {
+  #     WantedBy = [ "sway-session.target" ];
+  #   };
+  # };
 
   systemd.user.services.nm-applet = {
     Unit = {

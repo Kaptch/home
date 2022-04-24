@@ -49,6 +49,7 @@ in
       for_window [shell=".*"] title_format "%title :: %shell"
       for_window [app_id="firefox"] inhibit_idle fullscreen
       for_window [app_id="Firefox"] inhibit_idle fullscreen
+      for_window [app_id="firefox" title="^Picture-in-Picture$"] floating enable, move position 877 450, sticky enable, opacity 1.0
       input * {
         xkb_layout "us,dk,ru"
         xkb_variant "qwerty"

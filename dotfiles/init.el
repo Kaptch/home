@@ -170,6 +170,13 @@
 (use-package tex
   :defer t
   :ensure auctex
+  :init
+  (add-hook 'LaTeX-mode-hook 
+            (lambda()
+              (add-to-list 'TeX-command-list '("XeLaTeX" "%`xelatex%(mode)%' %t" TeX-run-TeX nil t))
+              ;; (setq TeX-command-default "XeLaTeX")
+              (setq TeX-save-query nil)
+              (setq TeX-show-compilation t)))
   :config
   (setq TeX-auto-save t)
   (setq TeX-parse-self t)
@@ -186,6 +193,10 @@
   )
 
 (display-time-mode 1)
+;; (setq show-paren-mode t)
+(tool-bar-mode -1)
+(scroll-bar-mode -1)
+(setq-default indent-tabs-mode nil)
 (setq inhibit-startup-screen t)
 (setq visible-bell 1)
 (setq column-number-mode t)
