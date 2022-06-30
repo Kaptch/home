@@ -12,6 +12,7 @@ in
       menu = "bemenu-run";
       modifier = "Mod4";
       bars = [];
+      startup = [{ command = "mako"; }];
       keybindings =
         let
           screenshot_dir =
@@ -25,16 +26,13 @@ in
             "XF86AudioLowerVolume" = "exec ${pkgs.pulseaudio}/bin/pactl set-sink-volume @DEFAULT_SINK@ -5%";
             "XF86AudioPlay" = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
             "${sway-cfg.modifier}+p" = "exec ${pkgs.wdisplays}/bin/wdisplays";            
-            "${sway-cfg.modifier}+l" = "exec ${pkgs.swaylock-fancy}/bin/swaylock-fancy"; # --screenshots --clock	--indicator --indicator-radius 100 --indicator-thickness 7 --effect-blur 7x5
+            "${sway-cfg.modifier}+l" = "exec ${pkgs.swaylock-fancy}/bin/swaylock-fancy";
 	          "${sway-cfg.modifier}+Print" = "exec ${pkgs.sway-contrib.grimshot}/bin/grimshot --notify save screen ${screenshot_dir}";
             "${sway-cfg.modifier}+Shift+Print" = "exec ${pkgs.sway-contrib.grimshot}/bin/grimshot --notify save area ${screenshot_dir}";
             "${sway-cfg.modifier}+Shift+a" = "exec nwggrid";
           };
     };
-    # TODO: figure out where to put it
-    #exec --no-startup-id 'blueman-applet' 'nm-applet --indicator'
     # swaybg_command oguri -c ~/.config/oguri/config
-    # output * bg 'find $wallpapers_path -type f | shuf -n 1` fill
     extraConfig = ''
       set $laptop eDP-1
       bindswitch --reload --locked lid:on output $laptop disable

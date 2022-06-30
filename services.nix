@@ -8,12 +8,17 @@
     enable = true;
   };
 
-  services.syncthing.enable = true;
-  services.syncthing.tray.enable = true;
+  services.syncthing = {
+    enable = true;
+    # Broken
+    # tray.enable = true;
+    # tray.command = "syncthingtray";
+  };
 
-  programs.ssh.enable = true;
-  programs.ssh.forwardAgent = true;
-  programs.ssh.extraConfig = ''
+  programs.ssh = {
+    enable = true;
+    forwardAgent = true;
+    extraConfig = ''
     Host gpgtunnel
         HostName localhost
         StreamLocalBindUnlink yes
@@ -21,18 +26,50 @@
         User kaptch
         RemoteForward /run/user/1000/gnupg/S.gpg-agent /run/user/1000/gnupg/S.gpg-agent.extra        
   '';
-  # RemoteForward /home/kaptch/.gnupg/S.gpg-agent.ssh /home/kaptch/.gnupg/S.gpg-agent.ssh
+  };
   
   services.gpg-agent = {
     enable = true;
     enableSshSupport = true;
     pinentryFlavor = "curses";
-    #pinentryFlavor = "gtk2";
     enableExtraSocket = true;
-    # extraConfig = ''
-    # '';
   };
+
+  services.lorri.enable = true;
+
+  services.gnome-keyring.enable = true;
   
+  # Not found ???
+  # services.swayidle = {
+  #   enable = true;
+  #   timeouts = [{ timeout = 60; command = "swaylock -fF"; }];
+  #   events = [{ event = "before-sleep"; command = "swaylock"; }
+  #             { event = "lock"; command = "lock"; }];
+  # };
+
+  services.kanshi = {
+    enable = true;
+    profiles = {
+      undocked = {
+        outputs = [
+          {
+            criteria = "eDP-1";
+          }
+        ];
+      };
+      docked = {
+        outputs = [
+          {
+            criteria = "eDP-1";
+          }
+          {
+            criteria = "HDMI-A-1";
+          }
+        ];
+      };
+    };
+  };
+
   systemd.user.sockets.dbus = {
     Unit = {
       Description = "D-Bus User Message Bus Socket";
@@ -61,86 +98,35 @@
     };
   };
 
-  systemd.user.services.sway = {
-    Unit = {
-      Description = "Sway - Wayland window manager";
-      Documentation = [ "man:sway(5)" ];
-      BindsTo = [ "graphical-session.target" ];
-      Wants = [ "graphical-session-pre.target" ];
-      After = [ "graphical-session-pre.target" ];
-    };
-    Service = {
-      Type = "simple";
-      ExecStart = "${pkgs.sway}/bin/sway";
-      Restart = "on-failure";
-      RestartSec = 1;
-      TimeoutStopSec = 10;
-    };
+  programs.mako = {
+    enable = true;
+    layer = "overlay";
+    font = "IBM Plex 13";
+    width = 500;
+    height = 80;
+    defaultTimeout = 10000;
+    maxVisible = 10;
+    backgroundColor = "#000000AA";
+    textColor = "#FFFFFF";
+    borderColor = "#444444AA";
+    progressColor = "over #11AA11";
+    maxIconSize = 24;
   };
 
-  systemd.user.services.mako = {
-    Unit = {
-      Description = "Mako notification daemon";
-      PartOf = [ "graphical-session.target" ];
-    };
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "dbus";
-      BusName = "org.freedesktop.Notifications";
-      ExecStart = "${pkgs.mako}/bin/mako";
-      RestartSec = 5;
-      Restart = "always";
-    };
-  };
+  # systemd.user.services.swayidle = {
+  #   Unit.PartOf = [ "graphical-session.target" ];
+  #   Install.WantedBy = [ "graphical-session.target" ];
 
-  systemd.user.services.kanshi = {
-    Unit = {
-      Description = "Kanshi dynamic display configuration";
-      PartOf = [ "graphical-session.target" ];
-    };
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
-    };
-    Service = {
-      Type = "simple";
-      ExecStart = "${pkgs.kanshi}/bin/kanshi";
-      RestartSec = 5;
-      Restart = "always";
-    };
-  };
-
-  systemd.user.services.swayidle = {
-    Unit.PartOf = [ "graphical-session.target" ];
-    Install.WantedBy = [ "graphical-session.target" ];
-
-    Service = {
-      Environment = "PATH=${pkgs.bash}/bin:${config.wayland.windowManager.sway.package}/bin";
-      ExecStart = ''
-        ${pkgs.swayidle}/bin/swayidle -w \
-            timeout 600 "${pkgs.swaylock-fancy}/bin/swaylock-fancy" \
-            timeout 600 'swaymsg "output * dpms off"' \
-                resume 'swaymsg "output * dpms on"' \
-            before-sleep "${pkgs.swaylock-fancy}/bin/swaylock-fancy"
-      '';
-      Restart = "on-failure";
-    };
-  };
-
-  # systemd.user.services.oguri = {
-  #   Unit = {
-  #     Description = "A very nice animated wallpaper daemon for Wayland compositors";
-  #     PartOf = [ "graphical-session.target" ];
-  #   };
-  #   Install = {
-  #     WantedBy = [ "graphical-session.target" ];
-  #   };
   #   Service = {
-  #     Type = "simple";
-  #     ExecStart = "${pkgs.oguri}/bin/oguri";
-  #     RestartSec = 5;
-  #     Restart = "always";
+  #     Environment = "PATH=${pkgs.bash}/bin:${config.wayland.windowManager.sway.package}/bin";
+  #     ExecStart = ''
+  #       ${pkgs.swayidle}/bin/swayidle -w \
+  #           timeout 600 "${pkgs.swaylock-fancy}/bin/swaylock-fancy" \
+  #           timeout 600 'swaymsg "output * dpms off"' \
+  #               resume 'swaymsg "output * dpms on"' \
+  #           before-sleep "${pkgs.swaylock-fancy}/bin/swaylock-fancy"
+  #     '';
+  #     Restart = "on-failure";
   #   };
   # };
 
@@ -161,26 +147,6 @@
       LogsDirectory = "davmail";
     };
   };
-
-  # systemd.user.services.nextcloud = {
-  #   Unit = {
-  #     Description = "Nextcloud client";
-  #     BindsTo = [ "sway-session.target" ];
-  #     After = [ "sway-session.target" "network.target" ];
-  #     ConditionEnvironment = [ "WAYLAND_DISPLAY" ];
-  #   };
-  #   Service = {
-  #     Type = "simple";
-  #     ExecStart = "${pkgs.nextcloud-client}/bin/nextcloud --background";
-  #     ExecReload = "/run/current-system/sw/bin/kill -HUP $MAINPID";
-  #     KillMode = "process";
-  #     RestartSec = 5;
-  #     Restart = "always";
-  #   };
-  #   Install = {
-  #     WantedBy = [ "sway-session.target" ];
-  #   };
-  # };
 
   systemd.user.services.nm-applet = {
     Unit = {

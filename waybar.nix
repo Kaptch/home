@@ -124,89 +124,87 @@ window#waybar {
         "clock"
         "custom/power"
       ];
-      modules = {
-        "custom/power" = {
-          format = "";
-          on-click = "wlogout -p layer-shell";
+      "custom/power" = {
+        format = "";
+        on-click = "wlogout -p layer-shell";
+      };
+      "wlr/taskbar" = {
+	      all-outputs = true;   
+  	    format = "{icon}";
+  	    icon-size = 14;
+  	    icon-theme = "Numix-Circle";
+  	    tooltip-format = "{title}";
+  	    on-click = "activate";
+  	    on-click-middle = "close";
+      };
+      bluetooth = {
+  	    format = "{icon}";
+  	    format-alt = "bluetooth: {status}";
+  	    format-icons = {
+  		    enabled = "";
+  		    disabled = "";
+  	    };
+  	    tooltip-format = "{}";
+        on-click = "blueman-manager";
+      };
+      battery = {
+        format = "{capacity}% {icon}";
+        format-alt = "{time} {icon}";
+        format-charging = "{capacity}% ";
+        format-icons = [ "" "" "" "" "" ];
+        format-plugged = "{capacity}% ";
+        states = {
+          critical = 15;
+          warning = 30;
         };
-        "wlr/taskbar" = {
-	        all-outputs = true;   
-  	      format = "{icon}";
-  	      icon-size = 14;
-  	      icon-theme = "Numix-Circle";
-  	      tooltip-format = "{title}";
-  	      on-click = "activate";
-  	      on-click-middle = "close";
+      };
+      clock = {
+        format-alt = "{:%Y-%m-%d}";
+        tooltip-format = "{:%Y-%m-%d | %H:%M}";
+      };
+      cpu = {
+        format = "{usage}% ";
+        tooltip = false;
+      };
+      memory = { format = "{}% "; };
+      network = {
+        interval = 1;
+        format-alt = "{ifname}: {ipaddr}/{cidr}";
+        format-disconnected = "Disconnected ⚠";
+        format-ethernet = "{ifname}: {ipaddr}/{cidr}   up: {bandwidthUpBits} down: {bandwidthDownBits}";
+        format-linked = "{ifname} (No IP) ";
+        format-wifi = "{essid} ({signalStrength}%) ";
+        on-click = "alacritty --hold -e nmtui";
+      };
+      pulseaudio = {
+        format = "{volume}% {icon} {format_source}";
+        format-bluetooth = "{volume}% {icon} {format_source}";
+        format-bluetooth-muted = " {icon} {format_source}";
+        format-icons = {
+          car = "";
+          default = [ "" "" "" ];
+          handsfree = "";
+          headphones = "";
+          headset = "";
+          phone = "";
+          portable = "";
         };
-        bluetooth = {
-  	      format = "{icon}";
-  	      format-alt = "bluetooth: {status}";
-  	      format-icons = {
-  		      enabled = "";
-  		      disabled = "";
-  	      };
-  	      tooltip-format = "{}";
-          on-click = "blueman-manager";
-        };
-        battery = {
-          format = "{capacity}% {icon}";
-          format-alt = "{time} {icon}";
-          format-charging = "{capacity}% ";
-          format-icons = [ "" "" "" "" "" ];
-          format-plugged = "{capacity}% ";
-          states = {
-            critical = 15;
-            warning = 30;
-          };
-        };
-        clock = {
-          format-alt = "{:%Y-%m-%d}";
-          tooltip-format = "{:%Y-%m-%d | %H:%M}";
-        };
-        cpu = {
-          format = "{usage}% ";
-          tooltip = false;
-        };
-        memory = { format = "{}% "; };
-        network = {
-          interval = 1;
-          format-alt = "{ifname}: {ipaddr}/{cidr}";
-          format-disconnected = "Disconnected ⚠";
-          format-ethernet = "{ifname}: {ipaddr}/{cidr}   up: {bandwidthUpBits} down: {bandwidthDownBits}";
-          format-linked = "{ifname} (No IP) ";
-          format-wifi = "{essid} ({signalStrength}%) ";
-          on-click = "alacritty --hold -e nmtui";
-        };
-        pulseaudio = {
-          format = "{volume}% {icon} {format_source}";
-          format-bluetooth = "{volume}% {icon} {format_source}";
-          format-bluetooth-muted = " {icon} {format_source}";
-          format-icons = {
-            car = "";
-            default = [ "" "" "" ];
-            handsfree = "";
-            headphones = "";
-            headset = "";
-            phone = "";
-            portable = "";
-          };
-          format-muted = " {format_source}";
-          format-source = "{volume}% ";
-          format-source-muted = "";
-          on-click = "pavucontrol";
-        };
-        "sway/mode" = {
-          format = ''<span style="italic">{}</span>'';
-        };
-        temperature = {
-          critical-threshold = 80;
-          format = "{temperatureC}°C {icon}";
-          format-icons = [ "" "" "" ];
-        };
-        "sway/language" = {
-          format = "{short} {variant}";
-          on-click = "swaymsg input type:keyboard xkb_switch_layout next";
-        };
+        format-muted = " {format_source}";
+        format-source = "{volume}% ";
+        format-source-muted = "";
+        on-click = "pavucontrol";
+      };
+      "sway/mode" = {
+        format = ''<span style="italic">{}</span>'';
+      };
+      temperature = {
+        critical-threshold = 80;
+        format = "{temperatureC}°C {icon}";
+        format-icons = [ "" "" "" ];
+      };
+      "sway/language" = {
+        format = "{short} {variant}";
+        on-click = "swaymsg input type:keyboard xkb_switch_layout next";
       };
     }];
   };

@@ -1,24 +1,17 @@
-{ config, lib, pkgs, unstable, nixpkgs, nur, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  # Start sway script
-  start-sway = pkgs.writeShellScriptBin "start-sway" ''
-    # first import environment variables from the login manager
-    systemctl --user import-environment
-    # then start the service
-    exec systemctl --user start sway.service
-  '';
-
   # Tex with dependent packages
   tex = (pkgs.texlive.combine {
-    inherit (pkgs.texlive) scheme-medium
-      gentium-tug pbox scalerel dashbox xifthen ifmtarg biblatex cleveref biber;
+    inherit (pkgs.texlive) scheme-full
+      gentium-tug pbox scalerel dashbox xifthen ifmtarg biblatex cleveref biber iftex xstring totpages environ;
   });
 
   # Extra python packages
   my-python-packages = python-packages: with python-packages; [
     z3
     jupyter
+    pip
   ];  
   python-with-my-packages = pkgs.python3.withPackages my-python-packages;
 
@@ -33,9 +26,22 @@ let
                                          ext.pass-update
                                          ext.pass-tomb]);
 
+  dwarf-fortress = pkgs.dwarf-fortress-packages.dwarf-fortress-full.override {
+    dfVersion = "0.47.05";
+    theme = pkgs.dwarf-fortress-packages.themes.phoebus;
+    enableIntro = false;
+    enableFPS = true;
+  };
+
+  agda = pkgs.agda.withPackages [ pkgs.agdaPackages.standard-library pkgs.agdaPackages.agda-categories ];
+  
   # Mattermost
-  mattermost-with-datadir = pkgs.writeShellScriptBin "mattermost-with-datadir" ''
+  mattermost-fix = pkgs.writeShellScriptBin "mattermost-fix" ''
     exec mattermost-desktop -d ~/Mattermost
+  '';
+
+  emacsopen = pkgs.writeShellScriptBin "emacsopen" ''
+    exec emacsclient -c
   '';
 in
 
@@ -56,7 +62,14 @@ in
 
   programs.home-manager.enable = true;
   programs.gpg.enable = true;
-  programs.browserpass.enable = true;  
+  programs.browserpass.enable = true;
+  programs.opam = {
+    enable = true;
+    enableBashIntegration = true;
+  };
+
+  # nixpkgs.config.permittedInsecurePackages = [
+  # ];
   
   nixpkgs.config.allowUnfreePredicate =
     pkg: builtins.elem (lib.getName pkg) [ "steam-original"
@@ -68,115 +81,141 @@ in
                                            "spotify-unwrapped"
                                            "via"
                                            "dwarf-fortress"
-                                         ];
-
+                                         ];  
+  
   home.username = "kaptch";
   home.homeDirectory = "/home/kaptch";
   home.packages = with pkgs; [
-    wget
-    unzip
-    udisks
-    zathura
-    zoom-us
-    imagemagick
-    vlc
-    firefox-wayland
-    mutt
-    parted
-    syncthingtray
-    xz
     agda
-    rustup
-    opam
-    discord
-    pass-ext
-    pwgen
-    qtpass
-    steam
-    tdesktop
-    signal-desktop
-    gajim
-    thunderbird-wayland
+    aircrack-ng
     alacritty
-    tmux
-    gimp
-    swaylock-fancy
-    swayidle
-    wl-clipboard
-    mako
-    waybar
-    kanshi
-    bemenu
-    grim
-    wdisplays
-    element-desktop
-    wireguard-tools
-    start-sway
-    imv
-    mpv
-    slurp
-    pidgin
-    brightnessctl
-    font-awesome
-    wev
-    sway-contrib.grimshot
-    ranger
-    pcmanfm
     ardour
-    nwg-launchers
-    pavucontrol
-    pamixer
-    spotify
-    mattermost-desktop
-    mattermost-with-datadir
-    samba
-    xdg-utils
+    bemenu
+    bettercap
     blender
+    brave
+    brightnessctl
+    cabal-install
+    cage
+    cargo    
+    cargo-xbuild
+    cataclysm-dda
+    chromium
+    davmail
+    dino
+    discord
+    dsniff
+    dwarf-fortress
+    element-desktop
+    emacsopen
+    firefox-wayland
+    font-awesome
+    freecad
+    gajim
+    gimp
+    gnome3.adwaita-icon-theme
+    go-ethereum
+    gpa
+    grim
+    grub
+    gtklp
+    helvum
+    jdk
+    i2p
+    imagemagick
+    imv
+    kanshi
+    keepass-with-plugins
+    kicad
+    kismet
+    ledger-live-desktop
+    lutris
+    macchanger
+    mako
+    mattermost
+    mattermost-fix
+    meson
+    metasploit
+    mkchromecast
+    monero
+    monero-gui
+    mpv
+    mutt
+    mycrypto
+    networkmanagerapplet
+    nwg-launchers
+    okular
+    openssl
+    pamixer
+    parted
+    pass-ext
+    pavucontrol
+    pcmanfm
+    pidgin
+    playerctl
+    prusa-slicer
+    pulseaudio
+    pwgen
+    python-with-my-packages
+    qbittorrent
+    qemu
+    qmk
+    qtpass
+    radare2
+    ranger
+    reaverwps
+    rustc
+    rustfmt
+    samba
+    signal-desktop
+    slurp
+    spotify
+    steam
+    sway-contrib.grimshot
+    swayidle
+    swaylock-fancy
+    syncthingtray
+    system-config-printer
+    tdesktop
+    tex
+    thunderbird-wayland
+    tmux
+    tor-browser-bundle-bin
     transmission
     transmission-remote-gtk
-    tex
-    playerctl
-    pulseaudio
-    okular
+    udisks
+    unstable.coqPackages_8_15.iris
+    unstable.coqPackages_8_15.stdpp
+    coqPackages_8_15.QuickChick
+    unstable.coq_8_15    
+    unzip
     via
-    qmk
     vial
-    gtklp
+    vim
+    virt-manager
+    vlc
+    waybar
+    wdisplays
+    wev
+    wf-recorder
+    wget
+    wireguard-tools
+    wireshark
+    wl-clipboard
     wlogout
     xdg-desktop-portal
     xdg-desktop-portal-wlr
-    wf-recorder
-    helvum    
-    lutris
-    mkchromecast
-    davmail    
-    system-config-printer
-    # nextcloud-client
-    networkmanagerapplet
-    tor-browser-bundle-bin
-    i2p
-    binutils.bintools # TODO: remove
-    keepass-with-plugins
+    xdg-utils
+    xz
+    youtube-dl
     yubikey-manager
-    yubikey-personalization
     yubikey-manager-qt
+    yubikey-personalization
     yubikey-personalization-gui
     yubioath-desktop
-    gnome3.adwaita-icon-theme
-    coqPackages_8_14.stdpp
-    coqPackages_8_14.iris
-    coq_8_14
-    python-with-my-packages
-    (dwarf-fortress-packages.dwarf-fortress-full.override {
-      dfVersion = "0.47.05";
-      theme = dwarf-fortress-packages.themes.phoebus;
-      enableIntro = false;
-      enableFPS = true;
-    })
-    cataclysm-dda
+    zathura
+    zoom-us    
   ];
   
   home.file.".davmail.properties".source = ./dotfiles/davmail.properties;
-  # home.file.".config/oguri/config".source = ./dotfiles/oguri;
-  home.file.".config/kanshi/config".source = ./dotfiles/kanshi;
 }

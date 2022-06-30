@@ -74,6 +74,19 @@
 
 (use-package markdown-mode)
 
+(use-package direnv
+  :config
+  (direnv-mode))
+
+(use-package ssh
+  :init 
+  (add-hook 'ssh-mode-hook
+            (lambda ()
+              (setq ssh-directory-tracking-mode t)
+              (shell-dirtrack-mode t)
+              (setq dirtrackp nil)))
+  )
+
 (use-package proof-general
   :config
   (setq coq-compile-before-require t)
@@ -187,15 +200,22 @@
     '(setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Okular"))
   )
 
-(use-package exotica-theme
+(use-package ujelly-theme
   :config
-  (load-theme 'exotica t)
+  (load-theme 'ujelly t)
   )
+
+(if (daemonp) 
+    (add-hook 'after-make-frame-functions 
+	      (lambda (frame) 
+		(with-selected-frame frame (load-theme 'ujelly t)))) 
+  (load-theme 'ujelly t))
 
 (display-time-mode 1)
 ;; (setq show-paren-mode t)
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
+(display-battery-mode 1)
 (setq-default indent-tabs-mode nil)
 (setq inhibit-startup-screen t)
 (setq visible-bell 1)

@@ -1,7 +1,13 @@
 { pkgs, ... }:
+let
+  myEmacs = (pkgs.emacs.override {
+    withPgtk = true;
+  });
+in
 {
-  programs.emacs = {
+  programs.emacs = {    
     enable = true;
+    package = myEmacs;
     extraPackages = epkgs: with epkgs; [
       use-package
     ];
