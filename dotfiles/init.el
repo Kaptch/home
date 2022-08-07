@@ -56,9 +56,64 @@
   (add-hook 'haskell-literate-mode-hook #'lsp)
   )
 
-(use-package lsp-ui)
+(use-package gorepl-mode
+  :ensure)
 
-(use-package lsp-mode)
+(use-package go-mode
+  :config
+  (add-hook 'go-mode-hook 'lsp-deferred)
+  (add-hook 'go-mode-hook 'gorepl-mode)
+  (defun go-run-main ()
+    (interactive)
+    (shell-command
+     (format "go run %s"
+             (shell-quote-argument (buffer-file-name)))))
+  ;; (defun go-run-this-file ()
+  ;;   "go run"
+  ;;   (interactive)
+  ;;   (recompile (format "go run %s" (buffer-file-name))))
+  (defun lsp-go-install-save-hooks ()
+    (add-hook 'before-save-hook #'lsp-format-buffer t t)
+    (add-hook 'before-save-hook #'lsp-organize-imports t t)
+    (if (not (string-match "go" compile-command))
+        (set (make-local-variable 'compile-command)
+             "go build -v && go test -v && go vet"))
+    ;; (let ((map go-mode-map))
+    ;;   (define-key map (kbd "C-c a") 'go-test-current-project)
+    ;;   (define-key map (kbd "C-c m") 'go-test-current-file)
+    ;;   (define-key map (kbd "C-c .") 'go-test-current-test)
+    ;;   (define-key map (kbd "C-c b") 'go-run))
+    )
+  (define-key go-mode-map (kbd "C-c C-c C-r") 'go-run-main)
+  (add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
+  (add-hook 'go-mode-hook #'lsp-deferred)
+  (add-hook 'go-mode-hook #'yas-minor-mode)
+  )
+
+(use-package lsp-ui
+  :ensure
+  :commands lsp-ui-mode
+  :custom
+  (lsp-ui-peek-always-show t)
+  (lsp-ui-sideline-show-hover t)
+  (lsp-ui-doc-enable nil))
+
+(use-package lsp-mode
+  :ensure
+  :commands lsp
+  :custom
+  ;; (lsp-rust-analyzer-cargo-watch-command "clippy")
+  (lsp-eldoc-render-all t)
+  (lsp-idle-delay 0.6)
+  (lsp-rust-analyzer-server-display-inlay-hints t)
+  (lsp-rust-analyzer-display-lifetime-elision-hints-enable "skip_trivial")
+  (lsp-rust-analyzer-display-chaining-hints t)
+  (lsp-rust-analyzer-display-lifetime-elision-hints-use-parameter-names nil)
+  (lsp-rust-analyzer-display-closure-return-type-hints t)
+  (lsp-rust-analyzer-display-parameter-hints nil)
+  (lsp-rust-analyzer-display-reborrow-hints nil)
+  :config
+  (add-hook 'lsp-mode-hook 'lsp-ui-mode))
 
 ;; Hast-tables
 (use-package ht)
@@ -73,6 +128,8 @@
 (use-package lv)
 
 (use-package markdown-mode)
+
+(use-package ispell)
 
 (use-package direnv
   :config
@@ -133,10 +190,37 @@
 ;; Coq support
 (use-package company-coq)
 
+(use-package rustic
+  :ensure
+  :bind (:map rustic-mode-map
+              ("M-j" . lsp-ui-imenu)
+              ("M-?" . lsp-find-references)
+              ("C-c C-c l" . flycheck-list-errors)
+              ("C-c C-c a" . lsp-execute-code-action)
+              ("C-c C-c r" . lsp-rename)
+              ("C-c C-c q" . lsp-workspace-restart)
+              ("C-c C-c Q" . lsp-workspace-shutdown)
+              ("C-c C-c s" . lsp-rust-analyzer-status))
+  :config
+  (add-hook 'rustic-mode-hook 'rk/rustic-mode-hook))
+
+(defun rk/rustic-mode-hook ()
+  (when buffer-file-name
+    (setq-local buffer-save-without-query t)))
+
 (use-package rust-mode
   :init
   (add-hook 'flycheck-mode-hook #'flycheck-rust-setup)
-  (add-hook 'rust-mode-hook 'cargo-minor-mode)
+  ;; (add-hook 'rust-mode-hook 'cargo-minor-mode)
+  (add-hook 'rust-mode-hook #'lsp)
+  (add-hook 'rust-mode-hook
+            (lambda () (setq indent-tabs-mode nil)))
+  (add-hook 'rust-mode-hook
+            (lambda () (prettify-symbols-mode)))
+  (add-hook 'rust-mode-hook #'lsp)
+  :config
+  (setq rust-format-on-save t)
+  ;; (define-key rust-mode-map (kbd "C-c C-c") 'rust-run)
   )
 
 ;; Lisp support
@@ -163,9 +247,23 @@
   )
 
 ;; Git
-(use-package magit)
+(use-package magit
+  :config
+  (setq magit-process-password-prompt-regexps
+        '("^\\(Enter \\)?[Pp]assphrase\\( for \\(RSA \\)?key '.*'\\)?: ?$"
+          ;; match-group 99 is used to identify a host
+          "^\\(Enter \\)?[Pp]assword\\( for '\\(?99:.*\\)'\\)?: ?$"
+          "^.*'s password: ?$"
+          "^Yubikey for .*: ?$"
+          "^Enter PIN for '.*': ?$"))
+  )
 
 (use-package nix-mode)
+
+(use-package epg
+  :config
+  (setq epg-pinentry-mode 'loopback)
+  )
 
 ;; Interactive file traverse
 (use-package ido
@@ -183,6 +281,8 @@
 (use-package tex
   :defer t
   :ensure auctex
+  :ensure ispell
+  :ensure flyspell
   :init
   (add-hook 'LaTeX-mode-hook 
             (lambda()
@@ -190,14 +290,40 @@
               ;; (setq TeX-command-default "XeLaTeX")
               (setq TeX-save-query nil)
               (setq TeX-show-compilation t)))
+  (add-hook 'TeX-mode-hook 'flyspell-mode)
+  (add-hook 'LaTeX-mode-hook 'TeX-source-correlate-mode)
+  (add-hook 'emacs-lisp-mode-hook 'flyspell-prog-mode)
+  (add-hook 'TeX-mode-hook 'turn-on-reftex)
   :config
+  (defadvice TeX-LaTeX-sentinel
+      (around mg-TeX-LaTeX-sentinel-open-output activate)
+    "Open output when there are errors."
+    ;; Run `TeX-LaTeX-sentinel' as usual.
+    ad-do-it
+    ;; Check for the presence of errors.
+    (when
+        (with-current-buffer TeX-command-buffer
+          (plist-get TeX-error-report-switches (intern (TeX-master-file))))
+      ;; If there are errors, open the output buffer.
+      (TeX-recenter-output-buffer nil)))
+  (add-to-list 'TeX-expand-list
+	       '("%sn" (lambda () server-name)))  
   (setq TeX-auto-save t)
   (setq TeX-parse-self t)
+  (setq TeX-show-compilation 0)
   (setq-default TeX-master nil)
-  (setq TeX-source-correlate-mode t
+  (setq ispell-dictionary "english")
+  (setq TeX-PDF-mode t
+        TeX-source-correlate-mode t
 	TeX-source-correlate-start-server t)
-  (eval-after-load "tex"
-    '(setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Okular"))
+  ;; (eval-after-load "tex"
+  ;;   '(setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Okular"))
+  (add-to-list 'TeX-view-program-list
+	       '("Zathura"
+	         ("zathura %o"
+		  (mode-io-correlate " --synctex-forward %n:0:\"%b\" -x \"emacsclient --socket-name=%sn +%{line} %{input}\""))
+	         "zathura"))
+  (setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Zathura")
   )
 
 (use-package ujelly-theme
@@ -205,18 +331,22 @@
   (load-theme 'ujelly t)
   )
 
+;; Runs the theme in the client mode
 (if (daemonp) 
     (add-hook 'after-make-frame-functions 
 	      (lambda (frame) 
 		(with-selected-frame frame (load-theme 'ujelly t)))) 
   (load-theme 'ujelly t))
 
+;; Global config 
 (display-time-mode 1)
-;; (setq show-paren-mode t)
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
+(global-visual-line-mode 1)
+(global-hl-line-mode 1)
 (display-battery-mode 1)
 (setq-default indent-tabs-mode nil)
+(setq show-paren-mode 1)
 (setq inhibit-startup-screen t)
 (setq visible-bell 1)
 (setq column-number-mode t)
@@ -231,6 +361,7 @@
 ;; ???
 (epa-file-enable)
 
+;; TODO: move it to relevant sections
 (copy-face font-lock-constant-face 'calendar-iso-week-face)
 (set-face-attribute 'calendar-iso-week-face nil
                     :height 0.7)

@@ -10,7 +10,6 @@
 
   services.syncthing = {
     enable = true;
-    # Broken
     # tray.enable = true;
     # tray.command = "syncthingtray";
   };
@@ -33,19 +32,22 @@
     enableSshSupport = true;
     pinentryFlavor = "curses";
     enableExtraSocket = true;
+    extraConfig = ''
+      allow-emacs-pinentry
+      allow-loopback-pinentry
+    '';
   };
 
   services.lorri.enable = true;
 
   services.gnome-keyring.enable = true;
   
-  # Not found ???
-  # services.swayidle = {
-  #   enable = true;
-  #   timeouts = [{ timeout = 60; command = "swaylock -fF"; }];
-  #   events = [{ event = "before-sleep"; command = "swaylock"; }
-  #             { event = "lock"; command = "lock"; }];
-  # };
+  services.swayidle = {
+    enable = true;
+    timeouts = [{ timeout = 600; command = "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }];
+    events = [{ event = "before-sleep"; command = "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }
+              { event = "lock"; command = "lock"; }];
+  };
 
   services.kanshi = {
     enable = true;

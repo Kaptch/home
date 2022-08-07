@@ -43,6 +43,64 @@ let
   emacsopen = pkgs.writeShellScriptBin "emacsopen" ''
     exec emacsclient -c
   '';
+
+  ghidra-fix = pkgs.writeShellScriptBin "ghidra-fix" ''
+    _JAVA_AWT_WM_NONREPARENTING=1 exec ghidra
+  '';
+
+  ncoq = pkgs.coq_8_15;
+  ncoqPackages = pkgs.coqPackages_8_15;  
+  stdpp-dev = ncoqPackages.callPackage
+    ( { coq, stdenv, fetchFromGitLab }:
+      stdenv.mkDerivation {
+	      name = "coq${coq.coq-version}-stdpp";
+
+	      src = fetchFromGitLab {
+          domain = "gitlab.mpi-sws.org";
+          owner = "iris";
+          repo = "stdpp";
+          rev = "master";
+          sha256 = "Js5HuTXLtW2H9e/m1d+XW9z3+nAvpWFKYj9lYHGXteY=";
+	      };
+
+        preBuild = ''
+          if [[ -f coq-lint.sh ]]
+          then patchShebangs coq-lint.sh
+          fi
+        '';
+        
+	      buildInputs = with coq.ocamlPackages; [ ocaml camlp5 ];
+	      propagatedBuildInputs = [ ncoq ];
+	      enableParallelBuilding = true;
+
+	      installFlags = [ "COQLIB=$(out)/lib/coq/${coq.coq-version}/" ];
+      } ) { };
+
+  iris-dev = ncoqPackages.callPackage
+    ( { coq, stdenv, fetchFromGitLab }:
+      stdenv.mkDerivation {
+	      name = "coq${coq.coq-version}-iris";
+
+	      src = fetchFromGitLab {
+          domain = "gitlab.mpi-sws.org";
+          owner = "iris";
+          repo = "iris";
+          rev = "53b2097438351ca9c9ed6cfece976e2a743859be";
+          sha256 = "WjYJEK0LvPXez/8GXPMeiqkDJ1krtiLNAELTPNnfhfs=";
+	      };
+
+        preBuild = ''
+          if [[ -f coq-lint.sh ]]
+          then patchShebangs coq-lint.sh
+          fi
+        '';
+        
+	      buildInputs = with coq.ocamlPackages; [ ocaml camlp5 ];
+	      propagatedBuildInputs = [ ncoq stdpp-dev ];
+	      enableParallelBuilding = true;
+
+	      installFlags = [ "COQLIB=$(out)/lib/coq/${coq.coq-version}/" ];
+      } ) { };
 in
 
 {
@@ -58,6 +116,7 @@ in
       ./sway.nix
       ./services.nix
       ./wlogout.nix
+      ./zathura.nix
     ];
 
   programs.home-manager.enable = true;
@@ -66,6 +125,15 @@ in
   programs.opam = {
     enable = true;
     enableBashIntegration = true;
+  };
+  programs.zathura = {
+    enable = true;
+  };
+  programs.go = {
+    enable = true;
+    # packages = {
+    #   "golang.org/x/tools/goplst" = builtins.fetchGit "https://go.googlesource.com/tools";
+    # };
   };
 
   # nixpkgs.config.permittedInsecurePackages = [
@@ -101,9 +169,11 @@ in
     cargo-xbuild
     cataclysm-dda
     chromium
+    cutter
     davmail
     dino
     discord
+    direnv
     dsniff
     dwarf-fortress
     element-desktop
@@ -112,8 +182,12 @@ in
     font-awesome
     freecad
     gajim
+    ghidra
+    ghidra-fix
     gimp
     gnome3.adwaita-icon-theme
+    gopls
+    gore
     go-ethereum
     gpa
     grim
@@ -121,9 +195,12 @@ in
     gtklp
     helvum
     jdk
+    jetbrains.pycharm-community
     i2p
+    icu
     imagemagick
     imv
+    ispell
     kanshi
     keepass-with-plugins
     kicad
@@ -148,11 +225,15 @@ in
     openssl
     pamixer
     parted
+    patchelf
     pass-ext
     pavucontrol
     pcmanfm
     pidgin
     playerctl
+    pkg-config
+    protontricks
+    proton-caller
     prusa-slicer
     pulseaudio
     pwgen
@@ -184,10 +265,16 @@ in
     transmission
     transmission-remote-gtk
     udisks
-    unstable.coqPackages_8_15.iris
-    unstable.coqPackages_8_15.stdpp
-    coqPackages_8_15.QuickChick
-    unstable.coq_8_15    
+    # unstable.coqPackages_8_15.iris
+    # unstable.coqPackages_8_15.category-theory
+    # unstable.coqPackages_8_15.stdpp
+    # unstable.coqPackages_8_15.QuickChick
+    # unstable.coq_8_15
+    
+    stdpp-dev
+    iris-dev
+    ncoq
+    
     unzip
     via
     vial
@@ -213,7 +300,6 @@ in
     yubikey-personalization
     yubikey-personalization-gui
     yubioath-desktop
-    zathura
     zoom-us    
   ];
   
