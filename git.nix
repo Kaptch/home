@@ -6,6 +6,7 @@
     extraConfig = {
       core.editor = "emacs";
       credential.helper = "cache";
+      safe.directory = "/etc/nixos";
     };
   };
 }
