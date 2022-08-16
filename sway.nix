@@ -41,9 +41,9 @@ in
       output * bg #000000 solid_color
       output * bg `find $wallpapers_path -type f | shuf -n 1` fill
       default_border none
-      set $opacity 0.9
-      for_window [class=".*"] opacity $opacity
-      for_window [app_id=".*"] opacity $opacity
+      # set $opacity 0.9
+      # for_window [class=".*"] opacity $opacity
+      # for_window [app_id=".*"] opacity $opacity
       for_window [shell=".*"] title_format "%title :: %shell"
       for_window [app_id="firefox"] inhibit_idle fullscreen
       for_window [app_id="Firefox"] inhibit_idle fullscreen

@@ -11,6 +11,8 @@ let
   my-python-packages = python-packages: with python-packages; [
     z3
     jupyter
+    debugpy
+    python-lsp-server
     pip
   ];  
   python-with-my-packages = pkgs.python3.withPackages my-python-packages;
@@ -132,7 +134,12 @@ in
   programs.go = {
     enable = true;
     # packages = {
-    #   "golang.org/x/tools/goplst" = builtins.fetchGit "https://go.googlesource.com/tools";
+    #   "https://pkg.go.dev/github.com/go-delve/delve" = pkgs.fetchFromGitHub {
+    #       owner = "go-delve";
+    #       repo = "delve";
+    #       rev = "3fb2d49829187388d75c70fa46a18e0361a0292f";
+    #       sha256 = "paNr9aiRG6NP6DIGUojl7VPPPMTeJRpDW8ThDNOQhWM=";
+	  #     };
     # };
   };
 
@@ -169,15 +176,19 @@ in
     cargo-xbuild
     cataclysm-dda
     chromium
+    clippy
     cutter
     davmail
     dino
-    discord
     direnv
+    discord
     dsniff
     dwarf-fortress
     element-desktop
     emacsopen
+    erlang
+    erlang-ls
+    erlfmt
     firefox-wayland
     font-awesome
     freecad
@@ -186,26 +197,30 @@ in
     ghidra-fix
     gimp
     gnome3.adwaita-icon-theme
+    go-ethereum
     gopls
     gore
-    go-ethereum
     gpa
     grim
     grub
     gtklp
+    haskell-language-server
     helvum
-    jdk
-    jetbrains.pycharm-community
     i2p
     icu
     imagemagick
     imv
+    iris-dev
     ispell
+    jdk
+    jetbrains.pycharm-community
     kanshi
     keepass-with-plugins
     kicad
     kismet
     ledger-live-desktop
+    lispPackages.asdf
+    lispPackages.quicklisp
     lutris
     macchanger
     mako
@@ -219,21 +234,22 @@ in
     mpv
     mutt
     mycrypto
+    ncoq    
     networkmanagerapplet
     nwg-launchers
     okular
     openssl
     pamixer
     parted
-    patchelf
     pass-ext
+    patchelf
     pavucontrol
     pcmanfm
     pidgin
-    playerctl
     pkg-config
-    protontricks
+    playerctl
     proton-caller
+    protontricks
     prusa-slicer
     pulseaudio
     pwgen
@@ -245,12 +261,16 @@ in
     radare2
     ranger
     reaverwps
+    rebar3
+    rust-analyzer
     rustc
     rustfmt
     samba
+    sbcl
     signal-desktop
     slurp
     spotify
+    stdpp-dev
     steam
     sway-contrib.grimshot
     swayidle
@@ -264,17 +284,7 @@ in
     tor-browser-bundle-bin
     transmission
     transmission-remote-gtk
-    udisks
-    # unstable.coqPackages_8_15.iris
-    # unstable.coqPackages_8_15.category-theory
-    # unstable.coqPackages_8_15.stdpp
-    # unstable.coqPackages_8_15.QuickChick
-    # unstable.coq_8_15
-    
-    stdpp-dev
-    iris-dev
-    ncoq
-    
+    udisks    
     unzip
     via
     vial
