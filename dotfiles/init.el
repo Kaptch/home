@@ -1,25 +1,562 @@
-(eval-when-compile
-  (require 'use-package)
-  (setq use-package-always-ensure t
-        use-package-expand-minimally t))
+;;; package --- Summary
+;;; Commentary:
+;;; Code:
+(setq message-log-max t)
 
-(add-to-list 'package-archives '("gnu"   . "https://elpa.gnu.org/packages/"))
-(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
-(package-initialize)
+(defvar bootstrap-version)
+(let ((bootstrap-file
+       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+      (bootstrap-version 6))
+  (unless (file-exists-p bootstrap-file)
+    (with-current-buffer
+        (url-retrieve-synchronously
+         "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
+         'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
+
+(setq package-enable-at-startup nil)
+
+(straight-use-package 'use-package)
+
+(use-package straight
+  :custom (straight-use-package-by-default t))
+
+(defun reload-emacs-configuration ()
+  "Reload Emacs configuration."
+  (interactive)
+  (load-file "~/.emacs.d/init.el"))
 
 (defun dos2unix ()
-  "Replace DOS eolns CR LF with Unix eolns CR"
+  "Replace DOS eolns CR LF with Unix eolns CR."
   (interactive)
     (goto-char (point-min))
-      (while (search-forward "\r" nil t) (replace-match "")))
+    (while (search-forward "\r" nil t) (replace-match "")))
 
-(require 'bind-key)
+(defun window-horizontal-to-vertical ()
+  "Switch from a horizontal split to a vertical split."
+  (interactive)
+  (let ((one-buf (window-buffer (selected-window)))
+        (buf-point (point)))
+    (other-window 1)
+    (delete-other-windows)
+    (split-window-horizontally)
+    (switch-to-buffer one-buf)
+    (goto-char buf-point)))
 
-(use-package esup
-   :ensure t)
+(defun window-vertical-to-horizontal ()
+  "Switch from a vertical split to a horizontal split."
+  (interactive)
+  (let ((one-buf (window-buffer (selected-window)))
+        (buf-point (point)))
+    (other-window 1)
+    (delete-other-windows)
+    (split-window-vertically)
+    (switch-to-buffer one-buf)
+    (goto-char buf-point)))
+
+(defun server-shutdown ()
+  "Save buffers, Quit, and Shutdown (kill) server."
+  (interactive)
+  (save-some-buffers)
+  (kill-emacs))
+
+;; emacsclient -e "(lookup-password :host \"facebook.com\" :user \"zuck\")" | cut -d '"' -f2
+(defun lookup-password (&rest keys)
+  (let ((result (apply #'auth-source-search keys)))
+    (if result
+        (funcall (plist-get (car result) :secret))
+      nil)))
+
+(defmacro measure-time (&rest body)
+  "Measure the time it takes to evaluate BODY."
+  `(let ((time (current-time)))
+     ,@body
+     (message "%.06f" (float-time (time-since time)))))
+
+(defun sudo-file-name (filename)
+  "Prepend '/sudo:root@`system-name`:' to FILENAME if appropriate.
+This is, when it doesn't already have a sudo-prefix."
+  (if (not (or (string-prefix-p "/sudo:root@localhost:"
+                                filename)
+               (string-prefix-p (format "/sudo:root@%s:" system-name)
+                                filename)))
+      (format "/sudo:root@%s:%s" system-name filename)
+    filename))
+
+(defun sudo-save-buffer ()
+  "Save FILENAME with sudo if the user approves."
+  (interactive)
+  (when buffer-file-name
+    (let ((file (sudo-file-name buffer-file-name)))
+      (if (yes-or-no-p (format "Save file as %s ? " file))
+          (write-file file)))))
+
+(advice-add 'save-buffer :around
+            #'(lambda (fn &rest args)
+               (when (or (not (buffer-file-name))
+                         (not (buffer-modified-p))
+                         (file-writable-p (buffer-file-name))
+                         (not (sudo-save-buffer)))
+                 (call-interactively fn args))))
+
+(defun add-hook-lsp-organize-imports ()
+  (add-hook 'before-save-hook 'lsp-organize-imports))
+
+(defun add-hook-lsp-format-buffer ()
+  (add-hook 'before-save-hook 'lsp-format-buffer))
+
+(defadvice server-visit-files (before parse-numbers-in-lines (files proc &optional nowait) activate)
+  "Open file with emacsclient with cursors positioned on requested line.
+Most of console-based utilities prints filename in format
+'filename:linenumber'.  So you may wish to open filename in that format.
+Just call:
+  emacsclient filename:linenumber
+and file 'filename' will be opened and cursor set on line 'linenumber'"
+  (ad-set-arg 0
+              (mapcar (lambda (fn)
+                        (let ((name (car fn)))
+                          (if (string-match "^\\(.*?\\):\\([0-9]+\\)\\(?::\\([0-9]+\\)\\)?$" name)
+                              (cons
+                               (match-string 1 name)
+                               (cons (string-to-number (match-string 2 name))
+                                     (string-to-number (or (match-string 3 name) ""))))
+                            fn)))
+                      files)))
+
+(defconst my-diary-file (expand-file-name "diary" "~/"))
+(unless (file-exists-p my-diary-file)
+  (shell-command (concat "touch " my-diary-file)))
+(setq diary-file my-diary-file)
+
+(setq org-directory "~/Org/")
+(unless (file-exists-p org-directory)
+  (make-directory org-directory t))
+
+(setq org-default-notes-file (expand-file-name "things.org" org-directory))
+(unless (file-exists-p org-default-notes-file)
+  (insert "* Calendar" "\n"))
+
+(setq agenda-file (expand-file-name "agenda.org" org-directory))
+(unless (file-exists-p agenda-file)
+  (shell-command (concat "touch " agenda-file)))
+
+(setq home-file (expand-file-name "home.org" org-directory))
+(unless (file-exists-p home-file)
+  (shell-command (concat "touch " home-file)))
+
+(setq work-file (expand-file-name "work.org" org-directory))
+(unless (file-exists-p work-file)
+  (shell-command (concat "touch " work-file)))
+
+(use-package bind-key
+  :straight (:type built-in))
+
+(use-package tramp
+  :straight (:type built-in)
+  :init
+  (setq vc-ignore-dir-regexp
+        (format "\\(%s\\)\\|\\(%s\\)"
+                vc-ignore-dir-regexp
+                tramp-file-name-regexp))
+  (setq tramp-default-method "ssh")
+  (setq tramp-auto-save-directory
+        (expand-file-name "tramp-auto-save" user-emacs-directory))
+  (setq tramp-persistency-file-name
+        (expand-file-name "tramp-connection-history" user-emacs-directory))
+  (setq password-cache-expiry nil)
+  (setq tramp-use-ssh-controlmaster-options nil)
+  (setq remote-file-name-inhibit-cache nil))
+
+(use-package smtpmail
+  :config
+  (setq message-send-mail-function 'smtpmail-send-it)
+  (setq mml-secure-message-sign-pgp t
+        mml-secure-openpgp-sign-with-sender t
+        mml-secure-openpgp-encrypt-to-self t)
+  (add-hook 'message-send-hook 'mml-secure-message-sign-pgpmime)
+  (setq message-kill-buffer-on-exit t))
+
+(use-package dashboard
+  :init
+  (add-hook 'after-init-hook 'dashboard-refresh-buffer)
+  :config
+  (setq dashboard-set-navigator t)
+  (setq dashboard-set-init-info t)
+  (setq dashboard-set-heading-icons t)
+  (setq dashboard-set-file-icons t)
+  (setq dashboard-projects-backend 'projectile)
+  (add-to-list 'dashboard-items '(agenda) t)
+  (setq dashboard-week-agenda t)
+  (setq dashboard-projects-switch-function 'counsel-projectile)
+  (setq dashboard-startup-banner 'logo)
+  (setq dashboard-items '((recents  . 5)
+                          (projects . 5)))
+  (dashboard-setup-startup-hook))
+
+(use-package centaur-tabs
+  :demand
+  :config
+  (centaur-tabs-mode t)
+  (setq centaur-tabs-set-modified-marker t)
+  (setq centaur-tabs-modified-marker "*")
+  (setq centaur-tabs-enable-key-bindings t)
+  (setq centaur-tabs-set-icons t)
+  (setq centaur-tabs-show-navigation-buttons t)
+  (centaur-tabs-mode t)
+  (setq uniquify-separator "/")
+  (setq uniquify-buffer-name-style 'forward)
+  (centaur-tabs-headline-match)
+  (centaur-tabs-group-by-projectile-project)
+  (defun centaur-tabs-buffer-groups ()
+    "`centaur-tabs-buffer-groups' control buffers' group rules.
+
+ Group centaur-tabs with mode if buffer is derived from `eshell-mode' `emacs-lisp-mode' `dired-mode' `org-mode' `magit-mode'.
+ All buffer name start with * will group to \"Emacs\".
+ Other buffer group by `centaur-tabs-get-group-name' with project name."
+    (list
+     (cond
+      ;; ((not (eq (file-remote-p (buffer-file-name)) nil))
+      ;; "Remote")
+      ((or (string-equal "*" (substring (buffer-name) 0 1))
+	   (memq major-mode '(magit-process-mode
+			      magit-status-mode
+			      magit-diff-mode
+			      magit-log-mode
+			      magit-file-mode
+			      magit-blob-mode
+			      magit-blame-mode
+			      )))
+       "Emacs")
+      ((derived-mode-p 'prog-mode)
+       "Editing")
+      ((derived-mode-p 'dired-mode)
+       "Dired")
+      ((memq major-mode '(helpful-mode
+			  help-mode))
+       "Help")
+      ((memq major-mode '(org-mode
+			  org-agenda-clockreport-mode
+			  org-src-mode
+			  org-agenda-mode
+			  org-beamer-mode
+			  org-indent-mode
+			  org-bullets-mode
+			  org-cdlatex-mode
+			  org-agenda-log-mode
+			  diary-mode))
+       "OrgMode")
+      (t
+       (centaur-tabs-get-group-name (current-buffer))))))
+  :hook
+  (dired-mode . centaur-tabs-local-mode)
+  (dashboard-mode . centaur-tabs-local-mode)
+  (term-mode . centaur-tabs-local-mode)
+  (calendar-mode . centaur-tabs-local-mode)
+  (org-agenda-mode . centaur-tabs-local-mode)
+  :bind
+  ("C-<prior>" . centaur-tabs-backward)
+  ("C-<next>" . centaur-tabs-forward)
+  ("C-c t s" . centaur-tabs-counsel-switch-group)
+  ("C-c t p" . centaur-tabs-group-by-projectile-project)
+  ("C-c t g" . centaur-tabs-group-buffer-groups))
+
+(use-package doom-themes
+  :ensure t
+  :config
+  (setq doom-themes-enable-bold t
+        doom-themes-enable-italic t)
+  (load-theme 'doom-tokyo-night t)
+  (doom-themes-visual-bell-config)
+  (doom-themes-neotree-config)
+  (setq doom-themes-treemacs-theme "doom-atom")
+  (doom-themes-treemacs-config)
+  (doom-themes-org-config))
+
+(use-package minions
+  :hook (doom-modeline-mode . minions-mode))
+
+;; (use-package diminish
+;;   :diminish abbrev-mode
+;;   :diminish org-indent-mode
+;;   :diminish apheleia-mode
+;;   :diminish auto-revert-mode
+;;   :diminish lisp-interaction-mode
+;;   :diminish visual-line-mode)
+
+(use-package all-the-icons
+  :if (display-graphic-p)
+  :custom
+  (all-the-icons-scale-factor 1.0))
+
+(use-package all-the-icons-ivy
+  :if (display-graphic-p))
+
+(use-package all-the-icons-dired
+  :if (display-graphic-p)
+  :config
+  :hook (dired-mode . (lambda ()
+                        (interactive)
+                        (unless (file-remote-p default-directory)
+                          (all-the-icons-dired-mode)))))
+
+(use-package doom-modeline
+  :after eshell
+  :hook (after-init . doom-modeline-mode)
+  :custom-face
+  (mode-line ((t (:height 0.95))))
+  (mode-line-inactive ((t (:height 0.85))))
+  :custom
+  (doom-modeline-project-detection 'auto)
+  (doom-modeline-height 25)
+  (doom-modeline-bar-width 4)
+  (doom-modeline-lsp t)
+  (doom-modeline-buffer-state-icon nil)
+  (doom-modeline-github nil)
+  (doom-modeline-mu4e t)
+  (doom-modeline-irc t)
+  (doom-modeline-minor-modes t)
+  (doom-modeline-persp-name t)
+  (doom-modeline-persp-icon t)
+  (doom-modeline-buffer-file-name-style 'truncate-except-project)
+  (doom-modeline-major-mode-icon t)
+  (doom-modeline-major-mode-color-icon t)
+  (doom-modeline-support-imenu t))
+
+(use-package counsel-projectile
+  :after projectile
+  :bind (("C-M-p" . counsel-projectile-find-file))
+  :config
+  (counsel-projectile-mode))
+
+(use-package procress
+  :straight (:host github :repo "haji-ali/procress")
+  :commands procress-auctex-mode
+  :init
+  (add-hook 'LaTeX-mode-hook #'procress-auctex-mode)
+  :config
+  (procress-load-default-svg-images))
+
+(use-package hydra
+  :defer 1)
+
+(use-package ivy-hydra
+  :defer t
+  :after hydra)
+
+(use-package password-store
+  :config
+  (setq password-store-password-length 16))
+
+(use-package auth-source-pass
+  :config
+  ;; (auth-source-pass-enable)
+  (setq auth-source-debug 'trivia)
+  (setq auth-source-do-cache nil)
+  (setq auth-sources
+        '((:source "~/.authinfo.gpg")))
+  ;; (setq auth-sources '(password-store))
+  )
+
+(use-package projectile
+  :diminish projectile-mode
+  :config (projectile-mode)
+  :demand t
+  :bind-keymap
+  ("C-c p" . projectile-command-map)
+  :init
+  (when (file-directory-p "~/Projects")
+    (setq projectile-project-search-path '("~/Projects")))
+  (defun switch-project-action ()
+    "Switch to a workspace with the project name and start `magit-status'."
+    (persp-switch (projectile-project-name))
+    (magit-status))
+  (setq projectile-switch-project-action #'switch-project-action))
+
+(use-package counsel-projectile
+  :after projectile
+  :bind (("C-M-p" . counsel-projectile-find-file))
+  :config
+  (counsel-projectile-mode))
+
+(use-package docker
+  :commands docker)
+
+(use-package docker-tramp
+  :defer t
+  :after docker)
+
+(use-package emms
+  :commands emms
+  :init
+  (add-hook 'emms-player-started-hook 'emms-show)
+  (defun play-smooth-jazz ()
+    "Start up some nice Jazz"
+    (interactive)
+    (emms-play-streamlist "http://thejazzgroove.com/itunes.pls"))
+  :config
+  (require 'emms-setup)
+  (setq emms-show-format "Playing: %s")
+  (emms-standard)
+  (emms-default-players))
+  ;; (emms-mode-line-disable))
+
+(use-package calfw
+  :bind (("C-c C-a a" . my-open-calendar))
+  :config
+  (use-package calfw-ical)
+  (use-package calfw-cal)
+  (use-package calfw-org)
+  (defun my-open-calendar ()
+    (interactive)
+    (cfw:open-calendar-buffer
+     :contents-sources
+     (list
+      (cfw:org-create-source "Green")
+      (cfw:cal-create-source "Orange")
+      ;; (cfw:ical-create-source "Moon" "~/moon.ics" "Gray")  ; ICS source1
+      ;; (cfw:ical-create-source "gcal" "https://..../basic.ics" "IndianRed") ; google calendar ICS
+      ))))
+
+(use-package org-mu4e
+  :straight (:local-repo
+             "~/.nix-profile/share/emacs/site-lisp/mu4e"
+             :type built-in))
+
+(use-package mu4e-contrib
+  :straight (:local-repo
+             "~/.nix-profile/share/emacs/site-lisp/mu4e"
+             :type built-in))
+
+(use-package mu4e-icalendar
+  :straight (:local-repo
+             "~/.nix-profile/share/emacs/site-lisp/mu4e"
+             :type built-in))
+
+(use-package mu4e
+  :straight (:local-repo
+             "~/.nix-profile/share/emacs/site-lisp/mu4e"
+             :type built-in)
+  :commands (mu4e)
+  :bind ("C-c m" . mu4e)
+  :config
+  (setq mu4e-html2text-command 'mu4e-shr2text)
+  (add-to-list 'mu4e-view-actions '("ViewInBrowser" . mu4e-action-view-in-browser) t)
+  (setq shr-use-colors t)
+  (setq mu4e-view-html-plaintext-ratio-heuristic  most-positive-fixnum)
+  (add-hook 'mu4e-compose-mode-hook 'flyspell-mode)
+  ;; (setq mu4e-update-interval (* 15 60))
+  ;; (setq mu4e-index-update-in-background t)
+  (setq mu4e-compose-crypto-reply-plain-policy 'sign)
+  (setq mu4e-attachment-dir "~/Downloads")
+  (setq mu4e-change-filenames-when-moving t)
+  (setq mu4e-completing-read-function #'ivy-completing-read)
+  (setq mu4e-compose-complete-addresses t)
+  (setq mu4e-compose-context-policy 'ask-if-none)
+  (setq mu4e-compose-dont-reply-to-self t)
+  (setq mu4e-compose-keep-self-cc nil)
+  (setq mu4e-compose-format-flowed t)
+  (setq mu4e-view-show-images t
+        mu4e-show-images t
+        mu4e-view-image-max-width 800)
+  (setq mu4e-context-policy 'pick-first)
+  (setq mu4e-maildir "~/Maildir")
+  (setq mu4e-get-mail-command "mbsync -a")
+  (setq mu4e-headers-date-format "%d-%m-%Y %H:%M")
+  (setq mu4e-headers-fields '((:human-date . 20)
+                              (:flags . 6)
+                              (:mailing-list . 10)
+                              (:from . 22)
+                              (:subject)))
+  (setq mu4e-headers-include-related t)
+  (setq mu4e-sent-messages-behavior 'delete)
+  (setq mu4e-view-show-addresses t)
+  (setq mm-sign-option 'guided)
+  (setq mu4e-change-filenames-when-moving t)
+  (setq mu4e-view-fields '(:from :to :cc :bcc :subject :flags :date :maildir :mailing-list :tags :attachments :signature :decryption))
+  (setq mu4e-headers-date-format "%+4Y-%m-%d")
+  (setq mail-user-agent 'mu4e-user-agent)
+  (setq mu4e-icalendar-diary-file diary-file)
+  (setq mu4e-compose-signature-auto-include t)
+  (setq mu4e-compose-signature "Kind regards/Med venlig hilsen,\nSergei")
+  (mu4e-icalendar-setup)
+  (setq gnus-icalendar-org-capture-file org-default-notes-file)
+  (setq gnus-icalendar-org-capture-headline '("Calendar"))
+  (gnus-icalendar-org-setup)
+
+  (add-hook 'mu4e-view-mode-hook
+            (lambda()
+              (local-set-key (kbd "<RET>") 'mu4e~view-browse-url-from-binding)
+              (local-set-key (kbd "<tab>") 'shr-next-link)
+              (local-set-key (kbd "<backtab>") 'shr-previous-link)))
+
+  (setq mu4e-contexts
+        `(
+	  ,(make-mu4e-context
+	    :name "Gmail Account"
+	    :match-func (lambda (msg)
+			  (when msg
+			    (mu4e-message-contact-field-matches
+			     msg '(:from :to :cc :bcc) "kaptch@gmail.com")))
+	    :vars '(
+		    (mu4e-trash-folder . "/kaptch/Trash")
+		    (mu4e-refile-folder . "/kaptch/[Gmail]/Archive")
+		    (mu4e-drafts-folder . "/kaptch/[Gmail]/Drafts")
+		    (mu4e-sent-folder . "/kaptch/[Gmail]/Sent Mail")
+		    (user-mail-address  . "kaptch@gmail.com")
+		    (user-full-name . "Sergei Stepanenko")
+                    (smtpmail-smtp-user . "kaptch@gmail.com")
+                    (mu4e-compose-signature . "Kind regards/Med venlig hilsen,\nSergei")
+                    (smtpmail-default-smtp-server . "smtp.gmail.com")
+                    (smtpmail-smtp-server . "smtp.gmail.com")
+                    (smtpmail-smtp-service . 587)))
+
+	  ,(make-mu4e-context
+	    :name "Outlook Account"
+	    :match-func (lambda (msg) (when msg
+				        (string-prefix-p "/au" (mu4e-message-field msg :maildir))))
+	    :vars '(
+		    (mu4e-trash-folder . "/au/Junk")
+		    (mu4e-refile-folder . "/au/Archive")
+		    (mu4e-drafts-folder . "/au/Drafts")
+		    (mu4e-sent-folder . "/au/Sent")
+		    (user-mail-address . "sergei.stepanenko@cs.au.dk")
+                    (smtpmail-smtp-user . "au671308@uni.au.dk")
+                    (mu4e-compose-signature . "Kind regards/Med venlig hilsen,\nSergei")
+                    (smtpmail-smtp-server . "localhost")
+                    (smtpmail-smtp-service . 1025))))))
+
+(use-package mu4e-alert
+  :init
+  (defun perso--mu4e-notif ()
+    "Display both mode line and desktop alerts for incoming new emails."
+    (interactive)
+    (mu4e-update-mail-and-index 1)
+    (mu4e-alert-enable-mode-line-display)
+    (mu4e-alert-enable-notifications))
+  (defun perso--mu4e-refresh ()
+    "Refresh emails every 300 seconds and display desktop alerts."
+    (interactive)
+    (mu4e t)
+    (run-with-timer 0 300 'perso--mu4e-notif))
+  :after mu4e
+  :bind ("C-c C-u" . perso--mu4e-refresh)
+  :config
+  (add-hook 'after-init-hook #'mu4e-alert-enable-mode-line-display)
+  (mu4e-alert-set-default-style 'libnotify)
+  (add-hook 'after-init-hook #'mu4e-alert-enable-notifications)
+  (setq mu4e-alert-interesting-mail-query
+        (concat
+         "flag:unread AND maildir:/kaptch/Inbox "
+         "OR "
+         "flag:unread AND maildir:/au/Inbox "
+         )))
+
+(use-package esup)
 
 (use-package dired
-  :ensure nil
+  :straight nil
   :preface
   (autoload 'dired-get-filename "dired")
   (autoload 'term-set-escape-char "term")
@@ -35,7 +572,6 @@
                    filename))
           (buffer-read-only nil))
       (with-current-buffer buffer
-        ;; (term-mode)
         (term-char-mode)
         (term-set-escape-char ?\C-x))
       (set-process-sentinel
@@ -52,10 +588,14 @@
          ("M-@" . shell)
          ("M-*" . eshell)
          ("W" . browse-url-of-dired-file)
-         ("@" . dired-run-command)))
+         ("@" . dired-run-command))
+  :config
+  (put 'dired-find-alternate-file 'disabled nil)
+  (setq-default dired-listing-switches "-alh")
+  (setq dired-recursive-copies 'always))
 
 (use-package dired-subtree
-  :ensure nil
+  :straight nil
   :bind (:package dired
                   :map dired-mode-map
                   ("<tab>" . dired-subtree-toggle)
@@ -63,9 +603,9 @@
                   ("<backtab>" . dired-subtree-cycle)))
 
 (use-package dired-sidebar
-  :ensure t
   :commands (dired-sidebar-toggle-sidebar)
-  :bind (("C-x C-n" . dired-sidebar-toggle-sidebar))
+  :bind (("C-x C-n" . dired-sidebar-toggle-sidebar)
+         ("C-x C-m" . dired-sidebar-jump-to-sidebar))
   :init
   (add-hook 'dired-sidebar-mode-hook
             (lambda ()
@@ -79,12 +619,26 @@
   (setq dired-sidebar-use-term-integration t)
   (setq dired-sidebar-use-custom-font t))
 
-(use-package gnus
-  :commands gnus
-  :hook ((dired-mode . turn-on-gnus-dired-mode)))
+(use-package popper
+  :bind (("C-`"   . popper-toggle-latest)
+         ("M-`"   . popper-cycle)
+         ("C-M-`" . popper-toggle-type))
+  :init
+  (setq popper-reference-buffers
+        '("\\*Messages\\*"
+          "Output\\*$"
+          "\\*Warnings\\*"
+          "\\*Async Shell Command\\*"
+          help-mode
+          compilation-mode))
+  (popper-mode +1)
+  (popper-echo-mode +1))
+
+(use-package bbdb)
+
+(use-package counsel-bbdb)
 
 (use-package ivy
-  :ensure t
   :defer t
   :demand
   :diminish
@@ -97,12 +651,13 @@
          :map ivy-minibuffer-map
          ("<escape>" . abort-recursive-edit))
   :init
+  (ivy-mode)
+  :config
   (defvar projectile-completion-system)
   (defvar magit-completing-read-function)
   (defvar projector-completion-system)
   (setq projectile-completion-system 'ivy
         magit-completing-read-function 'ivy-completing-read)
-  (ivy-mode)
   :commands (ivy-completing-read
              ivy-completion-in-region
              swiper)
@@ -110,8 +665,16 @@
   (ivy-use-virtual-buffers t)
   (enable-recursive-minibuffers t))
 
+(use-package lsp-ivy)
+
 (use-package counsel
   :after ivy
+  :bind (("C-c y" . counsel-yank-pop)
+         ("M-i" . counsel-imenu)
+         ("C-x b" . counsel-ibuffer)
+         ("C-c r" . counsel-recentf)
+         ("C-c C-j" . counsel-org-goto)
+         ("C-c o" . counsel-semantic-or-imenu))
   :init (counsel-mode))
 
 (use-package swiper
@@ -119,44 +682,37 @@
   :bind (("C-s" . swiper)
          ("C-r" . swiper)))
 
+(use-package fill-column-indicator
+  :commands (fci-mode))
+
 (use-package eldoc
-  :ensure t
   :defer t
   :diminish
   :hook (prog-mode . turn-on-eldoc-mode))
 
 (use-package which-key
-  :ensure t
   :defer nil
   :diminish which-key-mode
   :config
-  (which-key-mode))
+  (which-key-mode)
+  (setq which-key-idle-delay 0.3))
 
 (use-package async
-  :ensure t)
+  :config (require 'smtpmail-async))
 
 (use-package saveplace
-  :ensure t
   :defer t
   :config
-  (save-place-mode))
+  (save-place-mode 1))
 
 (use-package elf-mode
-  :ensure t
   :magic ("ELF" . elf-mode))
 
 (use-package elisp-mode
-  :ensure nil
+  :straight nil
   :interpreter (("emacs" . emacs-lisp-mode)))
 
-(use-package imenu-anywhere
-  :ensure t
-  :defer t
-  :bind
-  ("M-i" . helm-imenu-anywhere))
-
 (use-package bm
-  :ensure t
   :demand t
   :init
   (setq bm-restore-repository-on-load t)
@@ -178,20 +734,55 @@
          ("M-b" . bm-toggle)))
 
 (use-package company
-  :ensure t
   :init
   (global-company-mode))
 
 (use-package tuareg
-  :ensure t
   :commands (camldebug tuareg-imenu-set-imenu)
+  :custom
+  (tuareg-opam-insinuate t)
   :hook ((tuareg-mode-hook . tuareg-imenu-set-imenu)
+         (tuareg-mode-hook . lsp-deferred)
          (tuareg-mode-hook . yas-minor-mode)))
+
+(use-package dune)
+
+(use-package utop
+  :config
+  (add-hook 'tuareg-mode-hook #'utop-minor-mode))
 
 (use-package emacs
   :init
   (global-set-key (kbd "C-=") 'text-scale-increase)
-  (global-set-key (kbd "C--") 'text-scale-decrease))
+  (global-set-key (kbd "C--") 'text-scale-decrease)
+  :bind (("C-c d" . 'gud-gdb)))
+
+(use-package ibuf-ext
+  :straight nil
+  :bind (("C-x C-b" . 'ibuffer)))
+
+(use-package eww
+  :straight nil
+  :bind (("C-c w" . 'eww))
+  :custom
+  (browse-url-browser-function 'eww-browse-url)
+  (shr-use-colors nil)
+  (shr-bullet "• ")
+  (shr-folding-mode t)
+  (eww-search-prefix "https://duckduckgo.com/html?q=")
+  (url-privacy-level '(email agent cookies lastloc)))
+
+(use-package erc
+  :straight nil
+  :bind (("C-c i" . 'erc)))
+
+(use-package shell
+  :straight nil
+  :bind (("M-@" . 'shell)))
+
+(use-package ielm
+  :straight nil
+  :bind ("C-c :" . ielm))
 
 (use-package rainbow-delimiters
   :hook ((emacs-lisp-mode
@@ -217,25 +808,18 @@
           css-mode)
          . rainbow-mode))
 
-(use-package browse-kill-ring
-  :ensure t
-  :bind ("C-c y" . 'browse-kill-ring))
-
-(use-package discover
-  :ensure t)
+(use-package discover)
 
 (use-package python-mode
-  :ensure t
   :init
   (with-eval-after-load "lsp-mode"
     (add-to-list 'lsp-enabled-clients 'pylsp))
   :hook ((python-mode . lsp-deferred)
          (python-mode . yas-minor-mode)
-         (before-save . lsp-format-buffer)
+         (python-mode . add-hook-lsp-organize-imports)
          )
   :config
   (use-package pipenv
-    :ensure t
     :hook (python-mode . pipenv-mode)
     :init
     (setq
@@ -243,22 +827,18 @@
      #'pipenv-projectile-after-switch-extended)))
 
 (use-package haskell-mode
-  :ensure t
   :commands haskell-mode
   :init
   (with-eval-after-load "lsp-mode"
     (add-to-list 'lsp-enabled-clients 'lsp-haskell))
   :config
-  (use-package lsp-haskell
-    :ensure t)
+  (use-package lsp-haskell)
   :hook ((haskell-mode . lsp-deferred)
-         (haskell-literate-mode . lsp-deferred)
          (haskell-mode . yas-minor-mode)
-         (before-save . lsp-format-buffer)
-         (before-save . lsp-organize-imports)))
+         (haskell-mode . add-hook-lsp-organize-imports)
+         (haskell-mode . add-hook-lsp-format-buffer)))
 
 (use-package go-mode
-  :ensure t
   :init
   (with-eval-after-load "lsp-mode"
     (add-to-list 'lsp-enabled-clients 'gopls))
@@ -272,28 +852,25 @@
         (set (make-local-variable 'compile-command)
              "go build -v && go test -v && go vet")))
   :config
-  (use-package gorepl-mode
-    :ensure t)
+  (use-package gorepl-mode)
   :hook ((go-mode . lsp-deferred)
          (go-mode . gorepl-mode)
          (go-mode . yas-minor-mode)
          (go-mode . kaptch/go-hook)
-         (before-save . lsp-format-buffer)
-         (before-save . lsp-organize-imports))
+         (go-mode . add-hook-lsp-format-buffer)
+         (go-mode . add-hook-lsp-organize-imports))
   :bind (("C-c C-c C-r" . go-run-main)))
 
 (use-package erlang
-  :ensure t
   :init
   (with-eval-after-load "lsp-mode"
     (add-to-list 'lsp-enabled-clients 'erlang-ls))
   :hook ((erlang-mode . lsp-deferred)
          (erlang-mode . yas-minor-mode)
-         (before-save . lsp-format-buffer)
-         (before-save . lsp-organize-imports)))
+         (erlang-mode . add-hook-lsp-format-buffer)
+         (erlang-mode . add-hook-lsp-organize-imports)))
 
 (use-package lsp-ui
-  :ensure t
   :commands lsp-ui-mode
   :custom
   (lsp-ui-peek-always-show t)
@@ -303,7 +880,6 @@
   :hook (lsp-mode . lsp-ui-mode))
 
 (use-package lsp-mode
-  :ensure t
   :init
   (setq lsp-keymap-prefix "C-c l")
   :commands (lsp lsp-deferred)
@@ -313,7 +889,6 @@
   :hook ((lsp-mode . lsp-enable-which-key-integration)))
 
 (use-package dap-mode
-  :ensure t
   :commands dap-debug
   :config
   (dap-register-debug-template "Rust::GDB Run Configuration"
@@ -342,34 +917,27 @@
   :custom
   (dap-python-debugger 'debugpy))
 
-(use-package flymake
-  :ensure t)
+(use-package flycheck
+  :init
+  (global-flycheck-mode))
 
-(use-package ht
-  :ensure t)
+(use-package ht)
 
-(use-package f
-  :ensure t)
+(use-package f)
 
-(use-package dash
-  :ensure t)
+(use-package dash)
 
-(use-package lv
-  :ensure t)
+(use-package lv)
 
-(use-package markdown-mode
-  :ensure t)
+(use-package markdown-mode)
 
-(use-package ispell
-  :ensure t)
+(use-package ispell)
 
 (use-package direnv
-  :ensure t
   :config
   (direnv-mode))
 
 (use-package ssh
-  :ensure t
   :init
   (add-hook 'ssh-mode-hook
             (lambda ()
@@ -378,10 +946,8 @@
               (setq dirtrackp nil))))
 
 (use-package proof-general
-  :ensure t
   :config
-  (use-package company-coq
-    :ensure t)
+  (use-package company-coq)
   :custom
   (coq-compile-before-require t)
   (coq-indent-box-style t)
@@ -419,22 +985,19 @@
          (coq-mode . company-coq-mode)))
 
 (use-package rust-mode
-  :ensure t
   :init
   (with-eval-after-load "lsp-mode"
     (add-to-list 'lsp-disabled-clients 'rls)
     (add-to-list 'lsp-enabled-clients 'rust-analyzer))
-  :hook ((flycheck-mode flycheck-rust-setup)
-         (rust-mode . lsp-deferred)
+  :hook ((rust-mode . lsp-deferred)
          (rust-mode . (lambda () (setq indent-tabs-mode nil)))
          (rust-mode . (lambda () (prettify-symbols-mode)))
          (rust-mode . yas-minor-mode)
-         (before-save . lsp-format-buffer)
-         (before-save . lsp-organize-imports))
+         (rust-mode . add-hook-lsp-format-buffer)
+         (rust-mode . add-hook-lsp-organize-imports))
   :config
   (setq rust-format-on-save t)
   (use-package rustic
-    :ensure t
     :bind (:map rustic-mode-map
                 ("M-j" . lsp-ui-imenu)
                 ("M-?" . lsp-find-references)
@@ -460,40 +1023,40 @@
   (lsp-rust-analyzer-display-reborrow-hints nil))
 
 (use-package slime
-  :ensure t
   :init
   (setq inferior-lisp-program "sbcl")
   (slime-setup '(slime-fancy slime-quicklisp slime-asdf))
   (defun cliki:start-slime ()
     (unless (slime-connected-p)
       (save-excursion (slime))))
-  :hook (slime-mode . cliki:start-slime)
-  :config
-  (use-package helm-slime
-    :ensure t)
-  (setq global-helm-slime-mode t))
+  :hook (slime-mode . cliki:start-slime))
 
-(use-package macrostep
-  :ensure t)
+(use-package macrostep)
 
-(use-package spinner
-  :ensure t)
+(use-package spinner)
 
 (use-package undo-tree
-  :ensure t
   :config
   (global-undo-tree-mode))
 
 (use-package yasnippet
-  :ensure t)
+  :hook
+  (prog-mode . yas-minor-mode)
+  :config
+  (yas-reload-all))
 
-(use-package workgroups2
-  :ensure t
-  :init
-  (workgroups-mode 1))
+(use-package perspective
+  :demand t
+  :bind (("C-M-k" . persp-switch)
+         ("C-M-n" . persp-next)
+         ("C-x k" . persp-kill-buffer*))
+  :custom
+  (persp-mode-prefix-key (kbd "C-c C-p"))
+  (persp-initial-frame-name "Main")
+  :config
+  (persp-mode))
 
 (use-package magit
-  :ensure t
   :diminish auto-revert-mode
   :bind
   (("C-c C-m" . magit-status)
@@ -502,7 +1065,6 @@
   :config
   (setq magit-process-password-prompt-regexps
         '("^\\(Enter \\)?[Pp]assphrase\\( for \\(RSA \\)?key '.*'\\)?: ?$"
-          ;; match-group 99 is used to identify a host
           "^\\(Enter \\)?[Pp]assword\\( for '\\(?99:.*\\)'\\)?: ?$"
           "^.*'s password: ?$"
           "^Yubikey for .*: ?$"
@@ -519,41 +1081,46 @@
     (jump-to-register :magit-fullscreen)))
 
 (use-package magit-todos
-  :ensure t
   :commands (magit-todos-list))
 
+(use-package magit-delta
+  :config
+  (add-hook 'magit-mode-hook (lambda () (magit-delta-mode +1)))
+  (setq magit-delta-delta-args
+  '("--24-bit-color" "always"
+    "--features" "magit-delta"
+    "--color-only")))
+
 (use-package git-commit
-  :ensure t
   :hook ((git-commit-mode . flyspell-mode)
 	 (git-commit-mode . git-commit-save-message)
 	 (git-commit-mode . turn-on-auto-fill)))
 
-(use-package nix-mode
-  :ensure t)
+(use-package nix-mode)
 
 (use-package epg
-  :ensure t
   :config
-  (setq epg-pinentry-mode 'loopback))
+  (setq epa-pinentry-mode 'ask))
 
-(use-package ido
-  :ensure t
-  :diminish ido-mode
-  :bind ("C-x C-b" . 'ibuffer)
+(use-package pinentry
+  :config
+  (pinentry-start))
+
+(use-package pdf-tools
   :init
-  (setq ido-everywhere t)
-  (setq ido-ubiquitous-mode t)
-  (setq ido-enable-flex-matching t)
-  (setq ido-use-filename-at-point nil)
-  (setq ido-auto-merge-work-directories-length -1)
-  (setq ido-use-virtual-buffers t)
-  (ido-mode))
+  (pdf-tools-install)
+  :config
+  (add-hook 'pdf-view-mode-hook
+            (lambda () (local-set-key (kbd "C-s") #'isearch-forward)))
+  (add-hook 'pdf-view-mode-hook
+            (lambda () (local-set-key (kbd "C-r") #'isearch-backward)))
+  )
 
 (use-package tex
   :defer t
-  :ensure auctex
-  :ensure ispell
-  :ensure flyspell
+  :straight auctex
+  :straight ispell
+  :straight flyspell
   :init
   (add-hook 'TeX-mode-hook 'flyspell-mode)
   (add-hook 'TeX-mode-hook 'turn-on-reftex)
@@ -576,21 +1143,52 @@
 	       '("%sn" (lambda () server-name)))
   (setq TeX-auto-save t)
   (setq TeX-parse-self t)
+  (setq synctex-number "1")
+  (setq pdf-sync-backward-display-action t
+        pdf-sync-forward-display-action t
+        TeX-source-correlate-method '(
+                                      (dvi . source-specials)
+                                      (pdf . synctex))
+        reftex-plug-into-AUCTeX t
+        shell-escape-mode "-shell-escape"
+        auto-update-latex-preview-pane 'off)
+  (add-hook 'TeX-after-compilation-finished-functions
+		        #'TeX-revert-document-buffer)
   (setq TeX-show-compilation 0)
   (setq-default TeX-master nil)
   (setq ispell-dictionary "english")
   (setq TeX-PDF-mode t
         TeX-source-correlate-mode t
 	TeX-source-correlate-start-server t)
-  (add-to-list 'TeX-view-program-list
-	       '("Zathura"
-	         ("zathura %o"
-		  (mode-io-correlate " --synctex-forward %n:0:\"%b\" -x \"emacsclient --socket-name=%sn +%{line} %{input}\""))
-	         "zathura"))
-  (setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Zathura"))
+  ;; (add-to-list 'TeX-view-program-list
+  ;;              '("Zathura"
+  ;;                ("zathura %o"
+  ;;       	  (mode-io-correlate " --synctex-forward %n:0:\"%b\" -x \"emacsclient --socket-name=%sn +%{line} %{input}\""))
+  ;;                "zathura"))
+  ;; (setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Zathura")
+  (setq TeX-view-program-selection '((output-pdf "PDF Tools"))
+        TeX-source-correlate-start-server t)
+
+  (add-hook 'TeX-after-compilation-finished-functions
+            #'TeX-revert-document-buffer)
+  :bind
+  (("C-c q" . pdf-sync-forward)))
+
+(use-package ob-async)
+
+(use-package org-contrib
+  :after org
+  :config
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((C . t)
+     (shell . t)
+     (ocaml . t)
+     (haskell . t)
+     (coq . t)
+     )))
 
 (use-package org
-  :ensure t
   :custom
   (copy-face font-lock-constant-face 'calendar-iso-week-face)
   (set-face-attribute 'calendar-iso-week-face nil
@@ -604,15 +1202,109 @@
           'font-lock-face 'calendar-iso-week-face))
   (org-log-done t)
   :bind
-  ("C-c c" . org-capture))
+  (("C-c c" . org-capture)
+   ("C-c l" . org-store-link))
+  :config
+  (setq org-default-priority ?A)
+  (setq org-highest-priority ?A)
+  (setq org-lowest-priority ?D)
+  (setq org-priority-faces '((?A . (:foreground "#FF0000" :weight bold))
+                             (?B . (:foreground "#FF9815" :weight bold))
+                             (?C . (:foreground "#68DF40"))
+                             (?D . (:foreground "#11D3FF"))))
+  (setq org-todo-keywords
+        '((sequence "TODO(t!)" "NEXT(n!)" "DOING(o!)" "WAIT(w!)" "|" "(e!)" "SCHEDULED(s!)" "DONE(d!)"))
+        org-todo-keyword-faces
+        '(("TODO" . (:foreground "magenta" :weight bold))
+          ("DOING" . (:foreground "blue"))
+          ("CANCELED" . (:foreground "white" :background "#4d4d4d" :weight bold))
+          ("NEXT" . "#008080")
+          ("DONE" . "#333"))
+        org-agenda-skip-scheduled-if-done t
+        org-agenda-skip-deadline-if-done t)
+  (add-to-list 'org-file-apps
+               '("\\.pdf\\'" . (lambda (file link)
+                                 (org-pdfview-open link))))
+  (setq org-agenda-archives-mode t)
+  (setq org-capture-templates
+        '(("t" "Todo" entry (file org-default-notes-file)
+           "* TODO %?\n  %U\n  %i\n  %a")
+          ("w" "Waiting" entry (file org-default-notes-file)
+           "* WAITING %?\n  %U\n  %i\n  %a")
+          ("s" "Scheduled" entry (file org-default-notes-file)
+           "* TODO [#%^{Priority?||A|B|C|D}] %^{Title}\nSCHEDULED: %^t\n%u\n%?\n\n\n" :empty-lines-before 1 :empty-lines-after 1)
+          ("e" "Event" entry (file org-default-notes-file)
+           "* %^{This is a?||TODO |NEXT |DOING |SCHEDULED}%^{Title}\nSCHEDULED: %^t\n%t\n%?")
+          ("i" "Ideas" entry (file org-default-notes-file)
+           "* %?\n  %u\n\n" :empty-lines-before 1 :empty-lines-after 1)
+          ("M" "Mail" entry (file org-default-notes-file)
+           "* TODO %(org-insert-time-stamp (org-read-date nil t \"%:date\") nil t) %(from-name \"%:fromname\" \"%:fromaddress\" \"%:from\") %a \t :%(get-domainname \"%:toaddress\"):")
+          ("s" "Code Snippet" entry (file org-default-notes-file)
+           "* %?\t%^g\n#+BEGIN_SRC %^{language}\n%i\n#+END_SRC")
+          ("u" "URL" entry (file org-default-notes-file)
+           "* %?\nURL: \nEntered on %U\n")
+          ("m" "Meeting" entry (file org-default-notes-file)
+	   "* MEETING with %? :MEETING:\n%t" :clock-in t :clock-resume t)
+          ("j" "Journal Entry"
+           entry (file org-default-notes-file)
+           "* Event: %?\n\n  %i\n\n  From: %a"
+           :empty-lines 1)))
+  (defun add-newline-at-end-if-none ()
+    "Add a newline at the end of the buffer if there isn't any."
+    (save-excursion
+      (save-restriction
+        (goto-char (1- (point-max)))
+        (if (not (looking-at "\n\n"))
+            (progn
+              (goto-char (point-max))
+              (insert "\n"))))))
+
+  (add-hook 'org-capture-before-finalize-hook 'add-newline-at-end-if-none)
+
+  (defun set-org-agenda-files ()
+  "Set different org-files to be used in `org-agenda`."
+  (setq org-agenda-files (list org-directory)))
+
+  (set-org-agenda-files)
+
+  (defun things ()
+    "Open main 'org-mode' file and start 'org-agenda' for today."
+    (interactive)
+    (find-file org-default-notes-file)
+    (set-org-agenda-files)
+    (org-agenda-list)
+    (org-agenda-day-view)
+    (shrink-window-if-larger-than-buffer)
+    (other-window 1))
+
+  (setq org-deadline-warning-days 3))
+
+(use-package org-journal
+  :defer t
+  :bind
+  ("M-p o" . org-journal-new-entry)
+  ("M-p s" . org-journal-new-scheduled-entry)
+  ("M-p n" . org-journal-open-next-entry)
+  ("M-p p" . org-journal-open-previous-entry)
+  :init
+  (setq
+   org-journal-prefix-key "M-p"
+   org-journal-enable-agenda-integration t)
+  :config
+  (setq org-journal-dir (concat org-directory "/journal")
+        org-journal-file-type 'weekly
+        org-journal-file-format "%Y%m%d.org"
+        org-journal-date-format "%A, %Y-%m-%d"))
+
+(use-package org-pdftools
+  :hook (org-mode . org-pdftools-setup-link))
 
 (use-package org-agenda
-  :ensure nil
+  :straight nil
   :after org
   :bind
   ("C-c a" . org-agenda)
   :custom
-  (org-agenda-files nil)
   (org-agenda-include-diary t)
   (org-agenda-prefix-format '((agenda . " %i %-12:c%?-12t% s")
                               (todo . " %i %-12:c%l")
@@ -620,10 +1312,41 @@
                               (search . " %i %-12:c")))
   (org-agenda-start-on-weekday nil))
 
-(use-package ujelly-theme
-  :ensure t
+(use-package go-translate
+  :commands (gts-do-translate)
+  :bind
+  (("C-c C-t t" . gts-do-translate))
+  :init
+  (setq gts-translate-list '(("dk" "en") ("en" "dk") ("fr" "en") ("en" "fr")))
   :config
-  (load-theme 'ujelly t))
+  (setq gts-default-translator
+        (gts-translator
+         :picker
+         (lambda ()
+           (cond ((equal major-mode 'pdf-view-mode)
+                  (gts-noprompt-picker :texter (gts-current-or-selection-texter)))
+                 (t (gts-prompt-picker))))
+         :engines
+         (gts-google-engine :parser (gts-google-summary-parser))
+         :render
+         (lambda ()
+           (cond ((equal major-mode 'pdf-view-mode)
+                  (gts-posframe-pop-render))
+                 (t (gts-buffer-render)))))))
+
+(use-package nov
+  :config
+  (add-to-list 'auto-mode-alist '("\\.epub\\'" . nov-mode)))
+
+(use-package typing)
+
+(use-package elisp-mode
+  :straight nil
+  :bind (("C-j" . eval-last-sexp)))
+
+;; (use-package ujelly-theme
+;;   :config
+;;   (load-theme 'ujelly t))
 
 (if (daemonp)
     (add-hook 'after-make-frame-functions
@@ -646,6 +1369,17 @@
 
 (add-hook 'prog-mode-hook 'display-line-numbers-mode)
 
+(add-to-list 'auto-mode-alist '(".*mutt.*" . message-mode))
+
+(add-hook 'compilation-finish-functions
+          (lambda (buf str)
+            (if (null (string-match ".*exited abnormally.*" str))
+                (progn
+                  (run-at-time
+                   "2 sec" nil 'delete-windows-on
+                   (get-buffer-create "*compilation*"))
+                  (message "No Compilation Errors!")))))
+
 (display-time-mode 1)
 (global-visual-line-mode 1)
 (global-hl-line-mode 1)
@@ -665,13 +1399,36 @@
 (setq scroll-conservatively 10000
       scroll-preserve-screen-position t)
 
+(setq display-time-default-load-average nil)
+(setq display-time-load-average nil)
+
+(setq gc-cons-threshold 20000000)
+
+(setq make-backup-files nil)
+(setq backup-directory-alist
+      `((".*" . ,temporary-file-directory)))
+(setq auto-save-file-name-transforms
+      `((".*" ,temporary-file-directory t)))
+(setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo")))
+
+(setq sentence-end-double-space nil)
+
+(setq initial-scratch-message "")
+
+;; (setq debug-on-error t)
+
+(global-auto-revert-mode t)
+
 (defalias 'yes-or-no-p 'y-or-n-p)
+(setq confirm-kill-emacs 'y-or-n-p)
 
 (set-frame-parameter nil 'alpha nil)
 
-(epa-file-enable)
-
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
+(setq
+ whitespace-line-column 80
+ whitespace-style '(face lines-tail))
+(add-hook 'prog-mode-hook #'whitespace-mode)
 
 (unless (fboundp 'x-select-font)
   (defalias 'x-select-font 'pgtk-popup-font-panel
@@ -680,8 +1437,12 @@
 (when (fboundp 'windmove-default-keybindings)
   (windmove-default-keybindings))
 
-(load-file (let ((coding-system-for-read 'utf-8))
-             (shell-command-to-string "agda-mode locate")))
+;; (load-file (let ((coding-system-for-read 'utf-8))
+;;              (shell-command-to-string "agda-mode locate")))
+
+(require 'agda2-mode)
+
+(setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.

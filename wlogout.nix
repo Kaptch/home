@@ -67,7 +67,7 @@
     }
     {
         "label" : "suspend",
-        "action" : "${pkgs.swaylock-fancy}/bin/swaylock-fancy & systemctl suspend",
+        "action" : "systemctl suspend",
         "text" : "Suspend",
         "keybind" : "u"
     }

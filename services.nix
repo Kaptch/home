@@ -1,4 +1,4 @@
-{ pkgs, config, ... }:
+{ pkgs, config, lib, ... }:
 {
   services.udiskie = {
     enable = true;
@@ -8,10 +8,12 @@
     enable = true;
   };
 
+  services.poweralertd = {
+    enable = true;
+  };
+
   services.syncthing = {
     enable = true;
-    # tray.enable = true;
-    # tray.command = "syncthingtray";
   };
 
   programs.ssh = {
@@ -23,10 +25,10 @@
         StreamLocalBindUnlink yes
         Port 10022
         User kaptch
-        RemoteForward /run/user/1000/gnupg/S.gpg-agent /run/user/1000/gnupg/S.gpg-agent.extra        
+        RemoteForward /run/user/1000/gnupg/S.gpg-agent /run/user/1000/gnupg/S.gpg-agent.extra
   '';
   };
-  
+
   services.gpg-agent = {
     enable = true;
     enableSshSupport = true;
@@ -40,13 +42,19 @@
 
   services.lorri.enable = true;
 
+  services.imapnotify.enable = true;
+
   services.gnome-keyring.enable = true;
-  
+
   services.swayidle = {
     enable = true;
-    timeouts = [{ timeout = 600; command = "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }];
-    events = [{ event = "before-sleep"; command = "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }
-              { event = "lock"; command = "lock"; }];
+    timeouts = [
+      { timeout = 600; command = "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }
+      { timeout = 1200; command = "swaymsg 'output * dpms off'"; resumeCommand = "swaymsg 'output * dpms on'"; }
+    ];
+    events = [
+      { event = "before-sleep"; command = "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }
+    ];
   };
 
   services.kanshi = {
@@ -72,31 +80,15 @@
     };
   };
 
-  systemd.user.sockets.dbus = {
-    Unit = {
-      Description = "D-Bus User Message Bus Socket";
-    };
-    Socket = {
-      ListenStream = "%t/bus";
-      ExecStartPost = "${pkgs.systemd}/bin/systemctl --user set-environment DBUS_SESSION_BUS_ADDRESS=unix:path=%t/bus";
-    };
-    Install = {
-      WantedBy = [ "sockets.target" ];
-      Also = [ "dbus.service" ];
-    };
-  };
-
-  systemd.user.services.dbus = {
-    Unit = {
-      Description = "D-Bus User Message Bus";
-      Requires = [ "dbus.socket" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.dbus}/bin/dbus-daemon --session --address=systemd: --nofork --nopidfile --systemd-activation";
-      ExecReload = "${pkgs.dbus}/bin/dbus-send --print-reply --session --type=method_call --dest=org.freedesktop.DBus / org.freedesktop.DBus.ReloadConfig";
-    };
-    Install = {
-      Also = [ "dbus.socket" ];
+  services.gammastep = {
+    enable = true;
+    dawnTime = "6:00-7:45";
+    duskTime = "18:35-20:15";
+    tray = true;
+    settings = {
+      general = {
+        adjustment-method = "wayland";
+      };
     };
   };
 
@@ -115,28 +107,11 @@
     maxIconSize = 24;
   };
 
-  # systemd.user.services.swayidle = {
-  #   Unit.PartOf = [ "graphical-session.target" ];
-  #   Install.WantedBy = [ "graphical-session.target" ];
-
-  #   Service = {
-  #     Environment = "PATH=${pkgs.bash}/bin:${config.wayland.windowManager.sway.package}/bin";
-  #     ExecStart = ''
-  #       ${pkgs.swayidle}/bin/swayidle -w \
-  #           timeout 600 "${pkgs.swaylock-fancy}/bin/swaylock-fancy" \
-  #           timeout 600 'swaymsg "output * dpms off"' \
-  #               resume 'swaymsg "output * dpms on"' \
-  #           before-sleep "${pkgs.swaylock-fancy}/bin/swaylock-fancy"
-  #     '';
-  #     Restart = "on-failure";
-  #   };
-  # };
-
-  systemd.user.services.davmail = {    
+  systemd.user.services.davmail = {
     Unit = {
       Description = "Davmail gateway";
       Documentation = "man:davmail(1)";
-      After = [ "network.target" ];      
+      After = [ "network.target" ];
     };
     Install = {
       WantedBy = [ "default.target" ];
@@ -164,4 +139,19 @@
       WantedBy = [ "sway-session.target" ];
     };
   };
+
+  # Broken for now
+  # systemd.user.services.crow = {
+  #   Unit = {
+  #     Description = "Crow Translator";
+  #     BindsTo = [ "sway-session.target" ];
+  #     After = [ "sway-session.target" ];
+  #   };
+  #   Service = {
+  #     ExecStart = "${pkgs.crow-translate}/bin/crow";
+  #   };
+  #   Install = {
+  #     WantedBy = [ "sway-session.target" ];
+  #   };
+  # };
 }

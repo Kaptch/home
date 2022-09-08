@@ -1,3 +1,4 @@
+{ pkgs, ... }:
 {
   programs.waybar = {
     enable = true;
@@ -112,11 +113,11 @@ window#waybar {
       modules-center = [ "sway/window" ];
       modules-left = [ "sway/workspaces" "tray" "sway/mode" ];
       modules-right = [
-        "wlr/taskbar"        
-        "bluetooth"
-	      "sway/language"	
+        "wlr/taskbar"
+	      "sway/language"
         "pulseaudio"
         "network"
+        "bluetooth"
         "cpu"
         "memory"
         "temperature"
@@ -129,7 +130,7 @@ window#waybar {
         on-click = "wlogout -p layer-shell";
       };
       "wlr/taskbar" = {
-	      all-outputs = true;   
+	      all-outputs = true;
   	    format = "{icon}";
   	    icon-size = 14;
   	    icon-theme = "Numix-Circle";
@@ -138,13 +139,6 @@ window#waybar {
   	    on-click-middle = "close";
       };
       bluetooth = {
-  	    format = "{icon}";
-  	    format-alt = "bluetooth: {status}";
-  	    format-icons = {
-  		    enabled = "";
-  		    disabled = "";
-  	    };
-  	    tooltip-format = "{}";
         on-click = "blueman-manager";
       };
       battery = {

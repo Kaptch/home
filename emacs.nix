@@ -5,11 +5,14 @@ let
   });
 in
 {
-  programs.emacs = {    
+  programs.emacs = {
     enable = true;
     package = myEmacs;
     extraPackages = epkgs: with epkgs; [
       use-package
+      pdf-tools
+      org-pdftools
+      agda2-mode
     ];
   };
 
