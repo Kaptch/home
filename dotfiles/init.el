@@ -1132,7 +1132,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
       (save-excursion (slime))))
   :hook (slime-mode . cliki:start-slime))
 
-(use-package macrostep)
+(use-package macrostep
+  :bind (("C-c e" . 'macrostep-expand)))
 
 (use-package spinner)
 
