@@ -204,7 +204,6 @@ in
         '';
           showSignature = "append";
         };
-        # INSIDE_EMACS='YES'
         passwordCommand = "echo $(INSIDE_EMACS='YES' gpg2 -q --for-your-eyes-only --no-tty -d /home/kaptch/.authinfo.gpg 2> /dev/null | awk '/machine gmail.com login kaptch@gmail.com/ {print $NF}' 2> /dev/null)";
         smtp = {
           host = "smtp.gmail.com";
@@ -253,7 +252,6 @@ in
         '';
           showSignature = "append";
         };
-        # INSIDE_EMACS='YES'
         passwordCommand = "echo $(INSIDE_EMACS='YES' gpg2 -q --for-your-eyes-only --no-tty -d /home/kaptch/.authinfo.gpg 2> /dev/null | awk '/machine au login au671308@uni.au.dk/ {print $NF}' 2> /dev/null)";
         smtp = {
           host = "localhost";
@@ -311,6 +309,7 @@ in
     crow-translate
     cutter
     davmail
+    delta
     dino
     direnv
     discord
@@ -318,8 +317,8 @@ in
     dsniff
     dwarf-fortress
     element-desktop
-    emacsopen
     emacs-all-the-icons-fonts
+    emacsopen
     erlang
     erlang-ls
     erlfmt
@@ -327,7 +326,6 @@ in
     firefox-wayland
     font-awesome
     freecad
-    libreoffice
     gajim
     gh
     ghidra
@@ -358,6 +356,7 @@ in
     kicad
     kismet
     ledger-live-desktop
+    libreoffice
     lispPackages.asdf
     lispPackages.quicklisp
     lutris
@@ -381,8 +380,8 @@ in
     okular
     openssl
     pamixer
-    parted
     papirus-icon-theme
+    parted
     pass-ext
     patchelf
     pavucontrol
@@ -405,6 +404,7 @@ in
     ranger
     reaverwps
     rebar3
+    rnix-lsp
     rust-analyzer
     rustc
     rustfmt
@@ -456,6 +456,25 @@ in
     zoom-us
   ];
 
+  xdg.userDirs = {
+    enable = true;
+    createDirectories = true;
+    extraConfig = {
+      XDG_AUDIO_DIR = "$HOME/Audio";
+      XDG_BOOKS_DIR = "$HOME/Books";
+      XDG_EDU_DIR = "$HOME/Edu";
+      XDG_GAMES_DIR = "$HOME/Games";
+      XDG_MAILDIR_DIR = "$HOME/Maildir";
+      XDG_ORG_DIR = "$HOME/Org";
+      XDG_SCREENSHOTS_DIR = "$HOME/Pictures/Screenshots";
+      XDG_WALLPAPER_DIR = "$HOME/Pictures/wallpapers";
+      XDG_PROJECTS_DIR = "$HOME/Projects";
+      XDG_SCRIPTS_DIR = "$HOME/Scripts";
+      XDG_SECRETS_DIR = "$HOME/Secrets";
+      XDG_MISC_DIR = "$HOME/Misc";
+      XDG_TEMP_DIR = "$HOME/Temp";
+    };
+  };
   home.file.".davmail.properties".source = ./dotfiles/davmail.properties;
   xdg.configFile."swaylock/config" = {
     text = lib.concatStrings (lib.mapAttrsToList (n: v:

@@ -212,7 +212,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   (defun centaur-tabs-buffer-groups ()
     "`centaur-tabs-buffer-groups' control buffers' group rules.
 
- Group centaur-tabs with mode if buffer is derived from `eshell-mode' `emacs-lisp-mode' `dired-mode' `org-mode' `magit-mode'.
+ Group centaur-tabs with mode if buffer is derived from `eshell-mode' `erc-mode'
+`emacs-lisp-mode' `dired-mode' `org-mode' `magit-mode'.
  All buffer name start with * will group to \"Emacs\".
  Other buffer group by `centaur-tabs-get-group-name' with project name."
     (list
@@ -231,6 +232,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
        "Emacs")
       ((derived-mode-p 'prog-mode)
        "Editing")
+      ((derived-mode-p 'erc-mode)
+       "IRC")
       ((derived-mode-p 'dired-mode)
        "Dired")
       ((memq major-mode '(helpful-mode
@@ -277,14 +280,6 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 (use-package minions
   :hook (doom-modeline-mode . minions-mode))
 
-;; (use-package diminish
-;;   :diminish abbrev-mode
-;;   :diminish org-indent-mode
-;;   :diminish apheleia-mode
-;;   :diminish auto-revert-mode
-;;   :diminish lisp-interaction-mode
-;;   :diminish visual-line-mode)
-
 (use-package all-the-icons
   :if (display-graphic-p)
   :custom
@@ -312,17 +307,47 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   (doom-modeline-height 25)
   (doom-modeline-bar-width 4)
   (doom-modeline-lsp t)
-  (doom-modeline-buffer-state-icon nil)
+  (doom-modeline-buffer-state-icon t)
+  (doom-modeline-buffer-modification-icon t)
   (doom-modeline-github nil)
   (doom-modeline-mu4e t)
   (doom-modeline-irc t)
+  (doom-modeline-irc-stylize 'identity)
   (doom-modeline-minor-modes t)
   (doom-modeline-persp-name t)
   (doom-modeline-persp-icon t)
   (doom-modeline-buffer-file-name-style 'truncate-except-project)
   (doom-modeline-major-mode-icon t)
+  (doom-modeline-icon t)
   (doom-modeline-major-mode-color-icon t)
-  (doom-modeline-support-imenu t))
+  (doom-modeline-support-imenu t)
+  :config
+  (doom-modeline-def-modeline 'main
+    '(bar matches buffer-info remote-host " "
+          hud buffer-position selection-info battery " "
+          input-method buffer-encoding media-info pdf-pages " "
+          window-number objed-state indent-info modals lsp checker " "
+          debug repl irc mu4e misc-info)
+    '(minor-modes major-mode process vcs time))
+  (defun setup-custom-doom-modeline ()
+    (doom-modeline-set-modeline 'main 'default))
+  (add-hook 'doom-modeline-mode-hook 'setup-custom-doom-modeline))
+
+(use-package git-timemachine
+  :straight (:host nil :type git :repo "https://codeberg.org/pidu/git-timemachine.git")
+  :defer 1
+  :bind
+  (("C-c C-c g" . git-timemachine-toggle)))
+
+(use-package multiple-cursors
+  :bind (("C-M-SPC" . set-rectangular-region-anchor)
+         ("C->" . mc/mark-next-like-this)
+         ("C-<" . mc/mark-previous-like-this)
+         ("C-c C->" . mc/mark-all-like-this)
+         ("C-c C-SPC" . mc/edit-lines)))
+
+(use-package restclient
+  :bind (("C-c C-c q" . restclient-mode)))
 
 (use-package counsel-projectile
   :after projectile
@@ -343,7 +368,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 
 (use-package ivy-hydra
   :defer t
-  :after hydra)
+  :after (ivy hydra))
 
 (use-package password-store
   :config
@@ -351,12 +376,12 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 
 (use-package auth-source-pass
   :config
-  ;; (auth-source-pass-enable)
+  (auth-source-pass-enable)
   (setq auth-source-debug 'trivia)
   (setq auth-source-do-cache nil)
   (setq auth-sources
         '((:source "~/.authinfo.gpg")))
-  ;; (setq auth-sources '(password-store))
+  (setq auth-sources '(password-store))
   )
 
 (use-package projectile
@@ -388,6 +413,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   :after docker)
 
 (use-package emms
+  :after dired
   :commands emms
   :init
   (add-hook 'emms-player-started-hook 'emms-show)
@@ -395,12 +421,29 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
     "Start up some nice Jazz"
     (interactive)
     (emms-play-streamlist "http://thejazzgroove.com/itunes.pls"))
+  :bind (("C-S-<return>" . 'emms-pause)
+         ("C-S-n" . 'emms-next)
+         ("C-S-p" . 'emms-previous)
+         ("C-c C-c t" . 'emms-smart-browse))
   :config
   (require 'emms-setup)
   (setq emms-show-format "Playing: %s")
-  (emms-standard)
-  (emms-default-players))
-  ;; (emms-mode-line-disable))
+  (emms-all)
+  (emms-default-players)
+  (setq emms-source-file-default-directory "~/Music/")
+  (defun emms-notify-and-next ()
+    "Send a notification of track and start next."
+    (emms-next-noerror)
+    (let ((track-name (emms-track-description (emms-playlist-current-selected-track))))
+      (notifications-notify
+       :title "🎵"
+       :body (format "EMMS is now playing: %s" track-name)
+       :actions '("Confirm" "I agree" "Refuse" "I disagree")
+       ;; FIXME
+       :on-action #'(lambda (&rest _args) (switch-to-buffer emms-browser-buffer t t))
+       :on-close #'(lambda (&rest _args) nil))))
+  (setq emms-player-next-function 'emms-notify-and-next)
+  (define-key dired-mode-map "`" 'emms-add-dired))
 
 (use-package calfw
   :bind (("C-c C-a a" . my-open-calendar))
@@ -416,7 +459,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
       (cfw:org-create-source "Green")
       (cfw:cal-create-source "Orange")
       ;; (cfw:ical-create-source "Moon" "~/moon.ics" "Gray")  ; ICS source1
-      ;; (cfw:ical-create-source "gcal" "https://..../basic.ics" "IndianRed") ; google calendar ICS
+      ;; (cfw:ical-create-source "gcal" "https://..../basic.ics" "IndianRed")
+                                        ; google calendar ICS
       ))))
 
 (use-package org-mu4e
@@ -446,8 +490,6 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   (setq shr-use-colors t)
   (setq mu4e-view-html-plaintext-ratio-heuristic  most-positive-fixnum)
   (add-hook 'mu4e-compose-mode-hook 'flyspell-mode)
-  ;; (setq mu4e-update-interval (* 15 60))
-  ;; (setq mu4e-index-update-in-background t)
   (setq mu4e-compose-crypto-reply-plain-policy 'sign)
   (setq mu4e-attachment-dir "~/Downloads")
   (setq mu4e-change-filenames-when-moving t)
@@ -470,11 +512,14 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
                               (:from . 22)
                               (:subject)))
   (setq mu4e-headers-include-related t)
-  (setq mu4e-sent-messages-behavior 'delete)
+  (setq mu4e-sent-messages-behavior 'sent)
   (setq mu4e-view-show-addresses t)
   (setq mm-sign-option 'guided)
   (setq mu4e-change-filenames-when-moving t)
-  (setq mu4e-view-fields '(:from :to :cc :bcc :subject :flags :date :maildir :mailing-list :tags :attachments :signature :decryption))
+  (setq mu4e-view-fields '(:from :to :cc
+                                 :bcc :subject :flags
+                                 :date :maildir :mailing-list
+                                 :tags :attachments :signature :decryption))
   (setq mu4e-headers-date-format "%+4Y-%m-%d")
   (setq mail-user-agent 'mu4e-user-agent)
   (setq mu4e-icalendar-diary-file diary-file)
@@ -507,15 +552,18 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 		    (user-mail-address  . "kaptch@gmail.com")
 		    (user-full-name . "Sergei Stepanenko")
                     (smtpmail-smtp-user . "kaptch@gmail.com")
-                    (mu4e-compose-signature . "Kind regards/Med venlig hilsen,\nSergei")
+                    (mu4e-compose-signature
+                     . "Kind regards/Med venlig hilsen,\nSergei")
                     (smtpmail-default-smtp-server . "smtp.gmail.com")
                     (smtpmail-smtp-server . "smtp.gmail.com")
                     (smtpmail-smtp-service . 587)))
 
 	  ,(make-mu4e-context
 	    :name "Outlook Account"
-	    :match-func (lambda (msg) (when msg
-				        (string-prefix-p "/au" (mu4e-message-field msg :maildir))))
+	    :match-func
+            (lambda (msg) (when msg
+			    (string-prefix-p "/au"
+                                             (mu4e-message-field msg :maildir))))
 	    :vars '(
 		    (mu4e-trash-folder . "/au/Junk")
 		    (mu4e-refile-folder . "/au/Archive")
@@ -523,7 +571,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 		    (mu4e-sent-folder . "/au/Sent")
 		    (user-mail-address . "sergei.stepanenko@cs.au.dk")
                     (smtpmail-smtp-user . "au671308@uni.au.dk")
-                    (mu4e-compose-signature . "Kind regards/Med venlig hilsen,\nSergei")
+                    (mu4e-compose-signature
+                     . "Kind regards/Med venlig hilsen,\nSergei")
                     (smtpmail-smtp-server . "localhost")
                     (smtpmail-smtp-service . 1025))))))
 
@@ -665,7 +714,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   (ivy-use-virtual-buffers t)
   (enable-recursive-minibuffers t))
 
-(use-package lsp-ivy)
+(use-package lsp-ivy
+  :after (ivy lsp))
 
 (use-package counsel
   :after ivy
@@ -695,7 +745,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   :diminish which-key-mode
   :config
   (which-key-mode)
-  (setq which-key-idle-delay 0.3))
+  (setq which-key-idle-delay 0.3)
+  (which-key-setup-side-window-bottom))
 
 (use-package async
   :config (require 'smtpmail-async))
@@ -774,7 +825,41 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 
 (use-package erc
   :straight nil
-  :bind (("C-c i" . 'erc)))
+  :custom
+  (erc-autojoin-channels-alist '(("libera.chat" "#ocaml" "#haskell" "#bash"
+                                  "#emacs" "#nixos" "#coq" "#latex" "#org-mode"
+                                  "#rust" "#typetheory")))
+  (erc-autojoin-timing 'ident)
+  (erc-fill-function 'erc-fill-static)
+  (erc-fill-static-center 22)
+  (erc-hide-list '("JOIN" "PART" "QUIT"))
+  (erc-lurker-hide-list '("JOIN" "PART" "QUIT"))
+  (erc-lurker-threshold-time 43200)
+  (erc-prompt-for-nickserv-password nil)
+  (erc-prompt-for-password nil)
+  (erc-server-reconnect-attempts 5)
+  (erc-server-reconnect-timeout 3)
+  (erc-track-exclude-types '("JOIN" "MODE" "NICK" "PART" "QUIT"
+                             "324" "329" "332" "333" "353" "477"))
+  :config
+  (add-to-list 'erc-modules 'notifications)
+  (add-to-list 'erc-modules 'spelling)
+  (erc-services-mode 1)
+  (erc-update-modules)
+  (defun erc-start-or-switch ()
+    "Connects to ERC, or switch to last active buffer."
+    (interactive)
+    (if (get-buffer "irc.libera.chat:6667")
+        (erc-track-switch-buffer 1)
+      (when (y-or-n-p "Start ERC? ")
+        (erc-tls :server "irc.libera.chat" :port 6697))))
+  :bind (("C-c i" . 'erc-start-or-switch)))
+
+(use-package erc-hl-nicks
+  :after erc)
+
+(use-package erc-image
+  :after erc)
 
 (use-package shell
   :straight nil
@@ -881,11 +966,13 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 
 (use-package lsp-mode
   :init
-  (setq lsp-keymap-prefix "C-c l")
   :commands (lsp lsp-deferred)
   :custom
   (lsp-eldoc-render-all t)
   (lsp-idle-delay 0.6)
+  (lsp-keymap-prefix "C-c k")
+  :config
+  (define-key lsp-mode-map (kbd "C-c k") lsp-command-map)
   :hook ((lsp-mode . lsp-enable-which-key-integration)))
 
 (use-package dap-mode
@@ -919,6 +1006,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 
 (use-package flycheck
   :init
+  (setq-default flycheck-disabled-checkers '(coq))
   (global-flycheck-mode))
 
 (use-package ht)
@@ -934,8 +1022,16 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 (use-package ispell)
 
 (use-package direnv
+  :demand t
   :config
-  (direnv-mode))
+  (direnv-mode)
+  (eval-after-load 'flycheck
+    '(setq flycheck-executable-find
+           (lambda (cmd)
+             (direnv-update-environment default-directory)
+             (executable-find cmd))))
+  :hook
+  (coq-mode . direnv-update-environment))
 
 (use-package ssh
   :init
@@ -946,8 +1042,12 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
               (setq dirtrackp nil))))
 
 (use-package proof-general
+  :init
+  (setq company-coq-live-on-the-edge t)
   :config
   (use-package company-coq)
+  (add-hook 'coq-mode-hook #'company-coq-mode)
+  (add-hook 'coq-mode #'(lambda () (progn (undo-tree-mode 1))))
   :custom
   (coq-compile-before-require t)
   (coq-indent-box-style t)
@@ -970,6 +1070,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
      ("by" . "now")
      ("forall" . "now")))
   (coq-unicode-tokens-enable nil)
+  (proof-three-window-mode-policy 'hybrid)
   (proof-delete-empty-windows t)
   (proof-disappearing-proofs nil)
   (proof-shell-eager-annotation-end
@@ -1061,7 +1162,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   :bind
   (("C-c C-m" . magit-status)
    :map magit-status-mode-map
-   ("q"       . magit-quit-session))
+   ("q" . magit-quit-session))
   :config
   (setq magit-process-password-prompt-regexps
         '("^\\(Enter \\)?[Pp]assphrase\\( for \\(RSA \\)?key '.*'\\)?: ?$"
@@ -1087,16 +1188,24 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   :config
   (add-hook 'magit-mode-hook (lambda () (magit-delta-mode +1)))
   (setq magit-delta-delta-args
-  '("--24-bit-color" "always"
-    "--features" "magit-delta"
-    "--color-only")))
+        '("--24-bit-color" "always"
+          "--features" "magit-delta"
+          "--color-only")))
 
 (use-package git-commit
   :hook ((git-commit-mode . flyspell-mode)
 	 (git-commit-mode . git-commit-save-message)
 	 (git-commit-mode . turn-on-auto-fill)))
 
-(use-package nix-mode)
+(use-package nix-mode
+  :config
+  (add-to-list 'lsp-language-id-configuration '(nix-mode . "nix"))
+  (lsp-register-client
+   (make-lsp-client :new-connection (lsp-stdio-connection '("rnix-lsp"))
+                    :major-modes '(nix-mode)
+                    :server-id 'nix))
+  (add-to-list 'lsp-enabled-clients 'nix)
+  :hook ((nix-mode-hook . lsp-deferred)))
 
 (use-package epg
   :config
@@ -1126,7 +1235,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   (add-hook 'TeX-mode-hook 'turn-on-reftex)
   (add-hook 'LaTeX-mode-hook
             (lambda()
-              (add-to-list 'TeX-command-list '("XeLaTeX" "%`xelatex%(mode)%' %t" TeX-run-TeX nil t))
+              (add-to-list 'TeX-command-list
+                           '("XeLaTeX" "%`xelatex%(mode)%' %t" TeX-run-TeX nil t))
               (setq TeX-save-query nil)
               (setq TeX-show-compilation t)))
   (add-hook 'LaTeX-mode-hook 'TeX-source-correlate-mode)
@@ -1213,7 +1323,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
                              (?C . (:foreground "#68DF40"))
                              (?D . (:foreground "#11D3FF"))))
   (setq org-todo-keywords
-        '((sequence "TODO(t!)" "NEXT(n!)" "DOING(o!)" "WAIT(w!)" "|" "(e!)" "SCHEDULED(s!)" "DONE(d!)"))
+        '((sequence "TODO(t!)" "NEXT(n!)"
+                    "DOING(o!)" "WAIT(w!)" "|" "(e!)" "SCHEDULED(s!)" "DONE(d!)"))
         org-todo-keyword-faces
         '(("TODO" . (:foreground "magenta" :weight bold))
           ("DOING" . (:foreground "blue"))
@@ -1348,11 +1459,11 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 ;;   :config
 ;;   (load-theme 'ujelly t))
 
-(if (daemonp)
-    (add-hook 'after-make-frame-functions
-	      (lambda (frame)
-		(with-selected-frame frame (load-theme 'ujelly t))))
-  (load-theme 'ujelly t))
+;; (if (daemonp)
+;;     (add-hook 'after-make-frame-functions
+;; 	      (lambda (frame)
+;; 		(with-selected-frame frame (load-theme 'ujelly t))))
+;;   (load-theme 'ujelly t))
 
 (add-hook 'emacs-lisp-mode-hook
           (lambda ()
@@ -1430,15 +1541,14 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
  whitespace-style '(face lines-tail))
 (add-hook 'prog-mode-hook #'whitespace-mode)
 
+(setq warning-suppress-types '((emacs) (emacs) (emacs) (emacs)))
+
 (unless (fboundp 'x-select-font)
   (defalias 'x-select-font 'pgtk-popup-font-panel
     "Pop up the font panel. This function has been overloaded in Nextstep."))
 
 (when (fboundp 'windmove-default-keybindings)
   (windmove-default-keybindings))
-
-;; (load-file (let ((coding-system-for-read 'utf-8))
-;;              (shell-command-to-string "agda-mode locate")))
 
 (require 'agda2-mode)
 
