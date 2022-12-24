@@ -1,7 +1,6 @@
 { config, lib, pkgs, ... }:
 
 let
-  # Tex with dependent packages
   tex = (pkgs.texlive.combine {
     inherit (pkgs.texlive) scheme-full
       gentium-tug
@@ -19,21 +18,13 @@ let
       environ;
   });
 
-  # Extra python packages
   my-python-packages = python-packages: with python-packages; [
-    z3
     jupyter
     debugpy
     python-lsp-server
     pip
   ];
   python-with-my-packages = pkgs.python3.withPackages my-python-packages;
-
-  # keepass-with-plugins = pkgs.keepass.override {
-  #   plugins = [ pkgs.keepass-keepassrpc pkgs.keepass-keeagent ];
-  # };
-
-  gajim = pkgs.gajim.override { enableOmemoPluginDependencies = true; enableJingle = true; };
 
   pass = pkgs.pass.override { waylandSupport = true; };
   pass-ext = pass.withExtensions (ext: [ ext.pass-import
@@ -47,9 +38,12 @@ let
     enableFPS = true;
   };
 
-  agda = pkgs.agda.withPackages [ pkgs.agdaPackages.standard-library pkgs.agdaPackages.agda-categories ];
+  pidgin-with-plugins = pkgs.pidgin.override {
+    plugins = [ pkgs.pidgin-otr pkgs.pidgin-latex ];
+  };
 
-  # Mattermost
+  agda = pkgs.agda.withPackages [ pkgs.agdaPackages.standard-library pkgs.agdaPackages.agda-categories pkgs.agdaPackages.cubical ];
+
   mattermost-fix = pkgs.writeShellScriptBin "mattermost-fix" ''
     exec mattermost-desktop -d ~/Mattermost
   '';
@@ -65,9 +59,9 @@ let
   ncoq = pkgs.coq_8_15;
   ncoqPackages = pkgs.coqPackages_8_15;
   stdpp-dev = ncoqPackages.callPackage
-    ( { coq, stdenv, fetchFromGitLab }:
+    ( { stdenv, fetchFromGitLab }:
       stdenv.mkDerivation {
-	      name = "coq${coq.coq-version}-stdpp";
+	      name = "coq${ncoq.coq-version}-stdpp";
 
 	      src = fetchFromGitLab {
           domain = "gitlab.mpi-sws.org";
@@ -83,17 +77,17 @@ let
           fi
         '';
 
-	      buildInputs = with coq.ocamlPackages; [ ocaml camlp5 ];
+	      buildInputs = with ncoq.ocamlPackages; [ ocaml camlp5 ];
 	      propagatedBuildInputs = [ ncoq ];
 	      enableParallelBuilding = true;
 
-	      installFlags = [ "COQLIB=$(out)/lib/coq/${coq.coq-version}/" ];
+	      installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
       } ) { };
 
   iris-dev = ncoqPackages.callPackage
-    ( { coq, stdenv, fetchFromGitLab }:
+    ( { stdenv, fetchFromGitLab }:
       stdenv.mkDerivation {
-	      name = "coq${coq.coq-version}-iris";
+	      name = "coq${ncoq.coq-version}-iris";
 
 	      src = fetchFromGitLab {
           domain = "gitlab.mpi-sws.org";
@@ -109,11 +103,11 @@ let
           fi
         '';
 
-	      buildInputs = with coq.ocamlPackages; [ ocaml camlp5 ];
+	      buildInputs = with ncoq.ocamlPackages; [ ocaml camlp5 ];
 	      propagatedBuildInputs = [ ncoq stdpp-dev ];
 	      enableParallelBuilding = true;
 
-	      installFlags = [ "COQLIB=$(out)/lib/coq/${coq.coq-version}/" ];
+	      installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
       } ) { };
 in
 {
@@ -275,13 +269,18 @@ in
     pkg: builtins.elem (lib.getName pkg) [ "steam-original"
                                            "steam-runtime"
                                            "steam"
+                                           "steam-run"
                                            "zoom"
                                            "discord"
                                            "spotify"
                                            "spotify-unwrapped"
-                                           "via"
                                            "dwarf-fortress"
                                          ];
+
+  nixpkgs.config.permittedInsecurePackages = [
+    "python3.10-poetry-1.2.2"
+    "python3.10-certifi-2022.9.24"
+  ];
 
   home.username = "kaptch";
   home.homeDirectory = "/home/kaptch";
@@ -289,15 +288,17 @@ in
     agda
     aircrack-ng
     alacritty
+    anki-bin
     ardour
     authenticator
+    baobab
     bemenu
     bettercap
     binutils
     bitwarden
     bitwarden-cli
     blender
-    brave
+    btop
     brightnessctl
     cabal-install
     cage
@@ -310,7 +311,6 @@ in
     cutter
     davmail
     delta
-    dino
     direnv
     discord
     docker-compose
@@ -322,11 +322,9 @@ in
     erlang
     erlang-ls
     erlfmt
-    fbreader
     firefox-wayland
     font-awesome
     freecad
-    gajim
     gh
     ghidra
     ghidra-fix
@@ -340,7 +338,8 @@ in
     grim
     grub
     gtklp
-    # haskell-language-server
+    gtk-layer-shell
+    haskell-language-server
     helvum
     hicolor-icon-theme
     i2p
@@ -349,16 +348,15 @@ in
     imv
     iris-dev
     ispell
-    javaPackages.openjfx17
     jdk
-    jetbrains.pycharm-community
     kanshi
-    kicad
     kismet
     ledger-live-desktop
     libreoffice
     lispPackages.asdf
     lispPackages.quicklisp
+    llvm
+    llvm-manpages
     lutris
     macchanger
     mako
@@ -366,8 +364,8 @@ in
     mattermost-fix
     meson
     metasploit
+    prismlauncher
     mkchromecast
-    monero
     monero-gui
     mpv
     mutt
@@ -379,6 +377,7 @@ in
     ocamlPackages.ocaml-lsp
     okular
     openssl
+    ott
     pamixer
     papirus-icon-theme
     parted
@@ -386,10 +385,11 @@ in
     patchelf
     pavucontrol
     pcmanfm
-    pidgin
+    pidgin-with-plugins
     pinentry-emacs
     pkg-config
     playerctl
+    profanity
     proton-caller
     protontricks
     prusa-slicer
@@ -398,13 +398,11 @@ in
     python-with-my-packages
     qbittorrent
     qemu
-    qmk
     qtpass
     radare2
     ranger
     reaverwps
     rebar3
-    rnix-lsp
     rust-analyzer
     rustc
     rustfmt
@@ -424,12 +422,11 @@ in
     tex
     thunderbird-wayland
     tmux
-    tor-browser-bundle-bin
-    transmission
-    transmission-remote-gtk
+    (tor-browser-bundle-bin.override {
+      useHardenedMalloc = false;
+    })
     udisks
     unzip
-    via
     vial
     vim
     virt-manager
@@ -456,6 +453,18 @@ in
     zoom-us
   ];
 
+  xdg.mimeApps.defaultApplications = {
+    "application/x-extension-htm" = "firefox.desktop";
+    "application/x-extension-html" = "firefox.desktop";
+    "application/x-extension-shtml" = "firefox.desktop";
+    "application/x-extension-xht" = "firefox.desktop";
+    "application/x-extension-xhtml" = "firefox.desktop";
+    "application/xhtml+xml" = "firefox.desktop";
+    "text/html" = "firefox.desktop";
+    "x-scheme-handler/chrome" = "firefox.desktop";
+    "x-scheme-handler/http" = "firefox.desktop";
+    "x-scheme-handler/https" = "firefox.desktop";
+  };
   xdg.userDirs = {
     enable = true;
     createDirectories = true;
@@ -490,5 +499,13 @@ in
         line-color = "12175c";
         show-failed-attempts = true;
       });
+  };
+  xdg.configFile."discord/settings.json" = {
+    text = builtins.toJSON {
+      SKIP_HOST_UPDATE = true;
+      BACKGROUND_COLOR = "#202225";
+      IS_MAXIMIZED = true;
+      IS_MINIMIZED = false;
+    };
   };
 }

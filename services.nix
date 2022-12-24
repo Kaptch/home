@@ -2,6 +2,7 @@
 {
   services.udiskie = {
     enable = true;
+    tray = "always";
   };
 
   services.emacs = {
@@ -20,6 +21,8 @@
     #   package = pkgs.syncthingtray;
     # };
   };
+
+  # systemd.user.services.syncthingtray.Service.ExecStart = lib.mkForce "${pkgs.bash}/bin/bash -c '${pkgs.coreutils}/bin/sleep 5; ${pkgs.syncthingtray-minimal}/bin/syncthingtray'";
 
   programs.ssh = {
     enable = true;
@@ -54,8 +57,8 @@
   services.swayidle = {
     enable = true;
     timeouts = [
-      { timeout = 600; command = "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }
-      { timeout = 1200; command = "swaymsg 'output * dpms off'"; resumeCommand = "swaymsg 'output * dpms on'"; }
+      { timeout = 1200; command = "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }
+      { timeout = 2400; command = "swaymsg 'output * dpms off'"; resumeCommand = "swaymsg 'output * dpms on'"; }
     ];
     events = [
       { event = "before-sleep"; command = "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }
@@ -85,17 +88,17 @@
     };
   };
 
-  services.gammastep = {
-    enable = true;
-    dawnTime = "6:00-7:45";
-    duskTime = "18:35-20:15";
-    tray = true;
-    settings = {
-      general = {
-        adjustment-method = "wayland";
-      };
-    };
-  };
+  # services.gammastep = {
+  #   enable = true;
+  #   dawnTime = "6:00-7:45";
+  #   duskTime = "18:35-20:15";
+  #   # tray = true;
+  #   settings = {
+  #     general = {
+  #       adjustment-method = "wayland";
+  #     };
+  #   };
+  # };
 
   programs.mako = {
     enable = true;
@@ -119,7 +122,7 @@
       After = [ "network.target" ];
     };
     Install = {
-      WantedBy = [ "default.target" ];
+      WantedBy = [ "multi-user.target" ];
     };
     Service = {
       Type = "simple";

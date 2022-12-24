@@ -1,7 +1,8 @@
 { pkgs, ... }:
 let
   myEmacs = (pkgs.emacs.override {
-    withPgtk = true;
+    # withPgtk = true;
+    # withGTK3 = true;
   });
 in
 {

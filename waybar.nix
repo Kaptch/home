@@ -1,8 +1,9 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
   programs.waybar = {
     enable = true;
     systemd.enable = true;
+    systemd.target = "sway-session.target";
     style = ''
 * {
     border: none;
@@ -10,6 +11,8 @@
     font-family: "Ubuntu Nerd Font";
     font-size: 13px;
     min-height: 0;
+    margin: 1px;
+    padding: 0 3px;
 }
 
 window#waybar {
@@ -42,11 +45,6 @@ window#waybar {
 #mode {
     background: #64727D;
     border-bottom: 3px solid white;
-}
-
-#clock, #battery, #cpu, #memory, #network, #pulseaudio, /* #custom-spotify, */ #tray, #mode {
-    padding: 0 3px;
-    margin: 0 2px;
 }
 
 #clock {
@@ -110,36 +108,47 @@ window#waybar {
       height = 30;
       layer = "top";
       position = "top";
-      modules-center = [ "sway/window" ];
-      modules-left = [ "sway/workspaces" "tray" "sway/mode" ];
+      modules-center = [
+        "sway/window"
+      ];
+      modules-left = [
+        "sway/workspaces"
+        "sway/language"
+        "custom/screen"
+        "tray"
+        "sway/mode"
+      ];
       modules-right = [
-        "wlr/taskbar"
-	      "sway/language"
         "pulseaudio"
         "network"
         "bluetooth"
         "cpu"
         "memory"
+        "disk"
+        "backlight"
         "temperature"
         "battery"
         "clock"
         "custom/power"
       ];
+      "sway/window" = {
+        icon = true;
+      };
+      backlight = {
+		    device = "eDP-1";
+		    format = "{percent}% {icon}";
+		    format-icons = [ "☼" "☀" ];
+	    };
       "custom/power" = {
         format = "";
-        on-click = "wlogout -p layer-shell";
-      };
-      "wlr/taskbar" = {
-	      all-outputs = true;
-  	    format = "{icon}";
-  	    icon-size = 14;
-  	    icon-theme = "Numix-Circle";
-  	    tooltip-format = "{title}";
-  	    on-click = "activate";
-  	    on-click-middle = "close";
+        on-click = "${pkgs.wlogout}/bin/wlogout -p layer-shell";
       };
       bluetooth = {
-        on-click = "blueman-manager";
+        on-click = "${pkgs.blueman}/bin/blueman-manager";
+        format = "{status} ";
+        tooltip-format = "{controller_alias}\t{controller_address}";
+  	    tooltip-format-connected = "{controller_alias}\t{controller_address}\n\n{device_enumerate}";
+  	    tooltip-format-enumerate-connected = "{device_alias}\t{device_address}";
       };
       battery = {
         format = "{capacity}% {icon}";
@@ -158,17 +167,28 @@ window#waybar {
       };
       cpu = {
         format = "{usage}% ";
-        tooltip = false;
+        on-click = "${pkgs.alacritty}/bin/alacritty -e ${pkgs.btop}/bin/btop";
+        tooltip = true;
       };
       memory = { format = "{}% "; };
+      "custom/screen" = {
+        format = "⃢";
+        on-click = "${pkgs.wdisplays}/bin/wdisplays";
+      };
+      disk = {
+        interval = 30;
+        format = "{percentage_free}% 🖴";
+        path = "/";
+        on-click = "${pkgs.pcmanfm}/bin/pcmanfm /home/kaptch";
+      };
       network = {
         interval = 1;
-        format-alt = "{ifname}: {ipaddr}/{cidr}";
+        # format-alt = "{ifname}: {ipaddr}/{cidr}";
         format-disconnected = "Disconnected ⚠";
         format-ethernet = "{ifname}: {ipaddr}/{cidr}   up: {bandwidthUpBits} down: {bandwidthDownBits}";
         format-linked = "{ifname} (No IP) ";
         format-wifi = "{essid} ({signalStrength}%) ";
-        on-click = "alacritty --hold -e nmtui";
+        on-click = "${pkgs.alacritty}/bin/alacritty -e ${pkgs.networkmanager}/bin/nmtui";
       };
       pulseaudio = {
         format = "{volume}% {icon} {format_source}";
@@ -186,10 +206,12 @@ window#waybar {
         format-muted = " {format_source}";
         format-source = "{volume}% ";
         format-source-muted = "";
-        on-click = "pavucontrol";
+        on-click = "${pkgs.pavucontrol}/bin/pavucontrol";
       };
       "sway/mode" = {
-        format = ''<span style="italic">{}</span>'';
+        # format = ''<span style="italic">{}</span>'';
+        format = " {}";
+        max-length = 50;
       };
       temperature = {
         critical-threshold = 80;
@@ -198,7 +220,7 @@ window#waybar {
       };
       "sway/language" = {
         format = "{short} {variant}";
-        on-click = "swaymsg input type:keyboard xkb_switch_layout next";
+        on-click = "${pkgs.sway}/bin/swaymsg input type:keyboard xkb_switch_layout next";
       };
     }];
   };

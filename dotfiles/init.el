@@ -1,7 +1,17 @@
-;;; package --- Summary
+;;; package --- my emacs configuration
 ;;; Commentary:
 ;;; Code:
+;;; TODOs:
+;;; - Move functions in a different file for better readability
+;;; - Group packages by their purpose
+;;; - Refactor Org-mode configuration
+;;; - Deal with shit-ton of keybindings (via hydra)
+;;; - Think about some sort of Org-files cloud sync
 (setq message-log-max t)
+
+(setq warning-minimum-level :error)
+
+(setq native-comp-async-report-warnings-errors nil)
 
 (defvar bootstrap-version)
 (let ((bootstrap-file
@@ -19,6 +29,8 @@
 (setq package-enable-at-startup nil)
 
 (straight-use-package 'use-package)
+(straight-use-package 'org)
+(package-initialize)
 
 (use-package straight
   :custom (straight-use-package-by-default t))
@@ -134,21 +146,17 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 (unless (file-exists-p org-directory)
   (make-directory org-directory t))
 
-(setq org-default-notes-file (expand-file-name "things.org" org-directory))
+(setq org-default-notes-file (expand-file-name "main.org" org-directory))
 (unless (file-exists-p org-default-notes-file)
-  (insert "* Calendar" "\n"))
+  (append-to-file "* Agenda\n" nil org-default-notes-file))
 
-(setq agenda-file (expand-file-name "agenda.org" org-directory))
-(unless (file-exists-p agenda-file)
-  (shell-command (concat "touch " agenda-file)))
+;; (setq agenda-file (expand-file-name "agenda.org" org-directory))
+;; (unless (file-exists-p agenda-file)
+;;   (shell-command (concat "touch " agenda-file)))
 
-(setq home-file (expand-file-name "home.org" org-directory))
-(unless (file-exists-p home-file)
-  (shell-command (concat "touch " home-file)))
-
-(setq work-file (expand-file-name "work.org" org-directory))
-(unless (file-exists-p work-file)
-  (shell-command (concat "touch " work-file)))
+;; (setq work-file (expand-file-name "work.org" org-directory))
+;; (unless (file-exists-p work-file)
+;;   (shell-command (concat "touch " work-file)))
 
 (use-package bind-key
   :straight (:type built-in))
@@ -187,12 +195,19 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   (setq dashboard-set-heading-icons t)
   (setq dashboard-set-file-icons t)
   (setq dashboard-projects-backend 'projectile)
-  (add-to-list 'dashboard-items '(agenda) t)
-  (setq dashboard-week-agenda t)
   (setq dashboard-projects-switch-function 'counsel-projectile)
+  (setq dashboard-item-names '(("Recent Files:" . "Recently opened files:")
+                               ("Agenda for today:" . "Today's agenda:")
+                               ("Agenda for the coming week:" . "Agenda:")))
   (setq dashboard-startup-banner 'logo)
-  (setq dashboard-items '((recents  . 5)
-                          (projects . 5)))
+  (setq dashboard-filter-agenda-entry 'dashboard-no-filter-agenda)
+  (setq dashboard-match-agenda-entry
+      "TODO=\"TODO\"|TODO=\"IN-PROGRESS\"")
+  ;; (setq dashboard-filter-agenda-entry 'dashboard-no-filter-agenda)
+  (setq dashboard-items '((recents  . 10)
+                          (projects . 5)
+                          (agenda . 7)))
+  (setq dashboard-agenda-release-buffers t)
   (dashboard-setup-startup-hook))
 
 (use-package centaur-tabs
@@ -285,8 +300,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   :custom
   (all-the-icons-scale-factor 1.0))
 
-(use-package all-the-icons-ivy
-  :if (display-graphic-p))
+;; (use-package all-the-icons-ivy
+;;   :if (display-graphic-p))
 
 (use-package all-the-icons-dired
   :if (display-graphic-p)
@@ -333,6 +348,14 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
     (doom-modeline-set-modeline 'main 'default))
   (add-hook 'doom-modeline-mode-hook 'setup-custom-doom-modeline))
 
+(use-package lsp-ltex
+  :ensure t
+  :hook (text-mode . (lambda ()
+                       (require 'lsp-ltex)
+                       (lsp)))
+  :init
+  (setq lsp-ltex-version "15.2.0"))
+
 (use-package git-timemachine
   :straight (:host nil :type git :repo "https://codeberg.org/pidu/git-timemachine.git")
   :defer 1
@@ -376,12 +399,12 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 
 (use-package auth-source-pass
   :config
-  (auth-source-pass-enable)
+  ;; (auth-source-pass-enable)
   (setq auth-source-debug 'trivia)
   (setq auth-source-do-cache nil)
   (setq auth-sources
         '((:source "~/.authinfo.gpg")))
-  (setq auth-sources '(password-store))
+  ;; (setq auth-sources '(password-store))
   )
 
 (use-package projectile
@@ -522,12 +545,12 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
                                  :tags :attachments :signature :decryption))
   (setq mu4e-headers-date-format "%+4Y-%m-%d")
   (setq mail-user-agent 'mu4e-user-agent)
-  (setq mu4e-icalendar-diary-file diary-file)
+  ;; (setq mu4e-icalendar-diary-file diary-file)
   (setq mu4e-compose-signature-auto-include t)
   (setq mu4e-compose-signature "Kind regards/Med venlig hilsen,\nSergei")
   (mu4e-icalendar-setup)
   (setq gnus-icalendar-org-capture-file org-default-notes-file)
-  (setq gnus-icalendar-org-capture-headline '("Calendar"))
+  (setq gnus-icalendar-org-capture-headline '("Agenda"))
   (gnus-icalendar-org-setup)
 
   (add-hook 'mu4e-view-mode-hook
@@ -676,7 +699,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   (setq popper-reference-buffers
         '("\\*Messages\\*"
           "Output\\*$"
-          "\\*Warnings\\*"
+	  "\\*Warnings\\*"
           "\\*Async Shell Command\\*"
           help-mode
           compilation-mode))
@@ -1198,15 +1221,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 	 (git-commit-mode . git-commit-save-message)
 	 (git-commit-mode . turn-on-auto-fill)))
 
-(use-package nix-mode
-  :config
-  (add-to-list 'lsp-language-id-configuration '(nix-mode . "nix"))
-  (lsp-register-client
-   (make-lsp-client :new-connection (lsp-stdio-connection '("rnix-lsp"))
-                    :major-modes '(nix-mode)
-                    :server-id 'nix))
-  (add-to-list 'lsp-enabled-clients 'nix)
-  :hook ((nix-mode-hook . lsp-deferred)))
+(use-package nix-mode)
 
 (use-package epg
   :config
@@ -1242,6 +1257,17 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
               (setq TeX-show-compilation t)))
   (add-hook 'LaTeX-mode-hook 'TeX-source-correlate-mode)
   :config
+  (defun BibTeX-auto-store ()
+    "This function should be called from `bibtex-mode-hook'.
+It will setup BibTeX to store keys in an auto file."
+    ;; We want this to be early in the list, so we do not
+    ;; add it before we enter BibTeX mode the first time.
+    (add-hook 'write-contents-functions #'TeX-safe-auto-write nil t)
+    (TeX-bibtex-set-BibTeX-dialect)
+    (set (make-local-variable 'TeX-auto-untabify) nil)
+    (set (make-local-variable 'TeX-auto-parse-length) 999999)
+    (set (make-local-variable 'TeX-auto-regexp-list) BibTeX-auto-regexp-list)
+    (set (make-local-variable 'TeX-master) t))
   (defadvice TeX-LaTeX-sentinel
       (around mg-TeX-LaTeX-sentinel-open-output activate)
     "Open output when there are errors."
@@ -1290,6 +1316,9 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 (use-package org-contrib
   :after org
   :config
+  (setq org-src-fontify-natively t)
+  (setq org-confirm-babel-evaluate nil)
+  (setq ob-async-no-async-languages-alist '("ipython"))
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((C . t)
@@ -1297,6 +1326,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
      (ocaml . t)
      (haskell . t)
      (coq . t)
+     (latex . t)
      )))
 
 (use-package org
@@ -1324,13 +1354,12 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
                              (?C . (:foreground "#68DF40"))
                              (?D . (:foreground "#11D3FF"))))
   (setq org-todo-keywords
-        '((sequence "TODO(t!)" "NEXT(n!)"
-                    "DOING(o!)" "WAIT(w!)" "|" "(e!)" "SCHEDULED(s!)" "DONE(d!)"))
+        '((sequence "TODO(t!)" "IN-PROGRESS(p!)" "WAIT(w!)" "CANCELED(c!)" "DONE(d!)"))
         org-todo-keyword-faces
         '(("TODO" . (:foreground "magenta" :weight bold))
-          ("DOING" . (:foreground "blue"))
+          ("WAIT" . (:foreground "green" :weight bold))
+          ("IN-PROGRESS" . (:foreground "blue" :weight bold))
           ("CANCELED" . (:foreground "white" :background "#4d4d4d" :weight bold))
-          ("NEXT" . "#008080")
           ("DONE" . "#333"))
         org-agenda-skip-scheduled-if-done t
         org-agenda-skip-deadline-if-done t)
@@ -1339,28 +1368,17 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
                                  (org-pdfview-open link))))
   (setq org-agenda-archives-mode t)
   (setq org-capture-templates
-        '(("t" "Todo" entry (file org-default-notes-file)
-           "* TODO %?\n  %U\n  %i\n  %a")
-          ("w" "Waiting" entry (file org-default-notes-file)
-           "* WAITING %?\n  %U\n  %i\n  %a")
-          ("s" "Scheduled" entry (file org-default-notes-file)
-           "* TODO [#%^{Priority?||A|B|C|D}] %^{Title}\nSCHEDULED: %^t\n%u\n%?\n\n\n" :empty-lines-before 1 :empty-lines-after 1)
-          ("e" "Event" entry (file org-default-notes-file)
-           "* %^{This is a?||TODO |NEXT |DOING |SCHEDULED}%^{Title}\nSCHEDULED: %^t\n%t\n%?")
-          ("i" "Ideas" entry (file org-default-notes-file)
-           "* %?\n  %u\n\n" :empty-lines-before 1 :empty-lines-after 1)
-          ("M" "Mail" entry (file org-default-notes-file)
-           "* TODO %(org-insert-time-stamp (org-read-date nil t \"%:date\") nil t) %(from-name \"%:fromname\" \"%:fromaddress\" \"%:from\") %a \t :%(get-domainname \"%:toaddress\"):")
-          ("s" "Code Snippet" entry (file org-default-notes-file)
-           "* %?\t%^g\n#+BEGIN_SRC %^{language}\n%i\n#+END_SRC")
-          ("u" "URL" entry (file org-default-notes-file)
-           "* %?\nURL: \nEntered on %U\n")
-          ("m" "Meeting" entry (file org-default-notes-file)
-	   "* MEETING with %? :MEETING:\n%t" :clock-in t :clock-resume t)
-          ("j" "Journal Entry"
-           entry (file org-default-notes-file)
-           "* Event: %?\n\n  %i\n\n  From: %a"
-           :empty-lines 1)))
+        '(("t" "Task" entry (file+headline org-default-notes-file "Agenda")
+           "* %^{This is a?||TODO |IN-PROGRESS |WAIT |DONE} [#%^{Priority?||A|B|C|D}] %^{Title}\nScheduled: %^t\n%u\n%?\n\n\n" :empty-lines-after 1)
+          ("i" "Idea" entry (file+headline org-default-notes-file "Ideas")
+           "* %?\n  %u\n\n" :empty-lines-after 1)
+          ("c" "Code Snippet" entry (file+headline org-default-notes-file "Code Snippets")
+           "* %?\t%^g\n#+BEGIN_SRC %^{language}\n\n#+END_SRC" :empty-lines-after 1)
+          ("r" "Kill ring" entry (file+headline org-default-notes-file "Kill ring")
+           "%^C" :empty-lines-after 1)
+          ("m" "Meeting" entry (file+headline org-default-notes-file "Notes")
+	   "* Meeting with %?\n:MEETING:\n%t\n\n" :empty-lines-after 1 :clock-in t :clock-resume t)
+          ))
   (defun add-newline-at-end-if-none ()
     "Add a newline at the end of the buffer if there isn't any."
     (save-excursion
@@ -1373,13 +1391,15 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 
   (add-hook 'org-capture-before-finalize-hook 'add-newline-at-end-if-none)
 
+  (setq org-startup-folded t)
+
   (defun set-org-agenda-files ()
-  "Set different org-files to be used in `org-agenda`."
-  (setq org-agenda-files (list org-directory)))
+    "Set different org-files to be used in `org-agenda`."
+    (setq org-agenda-files (cons org-default-notes-file nil)))
 
   (set-org-agenda-files)
 
-  (defun things ()
+  (defun org-main-file ()
     "Open main 'org-mode' file and start 'org-agenda' for today."
     (interactive)
     (find-file org-default-notes-file)
@@ -1396,11 +1416,11 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   :bind
   ("M-p o" . org-journal-new-entry)
   ("M-p s" . org-journal-new-scheduled-entry)
-  ("M-p n" . org-journal-open-next-entry)
-  ("M-p p" . org-journal-open-previous-entry)
+  ("M-p n" . org-journal-next-entry)
+  ("M-p p" . org-journal-previous-entry)
   :init
   (setq
-   org-journal-prefix-key "M-p"
+   org-journal-prefix-key "M-p "
    org-journal-enable-agenda-integration t)
   :config
   (setq org-journal-dir (concat org-directory "/journal")
@@ -1497,7 +1517,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
 (global-hl-line-mode 1)
 (display-battery-mode 1)
 (tool-bar-mode -1)
-(scroll-bar-mode -1)
+;; (scroll-bar-mode -1)
 
 (setq indent-tabs-mode nil)
 (setq show-paren-mode 1)
@@ -1542,7 +1562,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
  whitespace-style '(face lines-tail))
 (add-hook 'prog-mode-hook #'whitespace-mode)
 
-(setq warning-suppress-types '((emacs) (emacs) (emacs) (emacs)))
+;; (setq warning-suppress-types '((emacs) (emacs) (emacs) (emacs)))
 
 (unless (fboundp 'x-select-font)
   (defalias 'x-select-font 'pgtk-popup-font-panel

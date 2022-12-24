@@ -7,11 +7,15 @@ in
   wayland.windowManager.sway = {
     enable = true;
     wrapperFeatures.gtk = true;
+    systemdIntegration = true;
+    extraSessionCommands = ''
+      . "${config.home.profileDirectory}/etc/profile.d/hm-session-vars.sh"
+    '';
     config = {
       terminal = "alacritty";
       menu = "bemenu-run";
       modifier = "Mod4";
-      bars = [];
+      bars = [ ];
       startup = [{ command = "mako"; }];
       keybindings =
         let
