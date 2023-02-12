@@ -946,6 +946,47 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
          (haskell-mode . add-hook-lsp-organize-imports)
          (haskell-mode . add-hook-lsp-format-buffer)))
 
+(use-package solidity-mode
+  :config
+  (use-package company-solidity)
+  (setq solidity-comment-style 'slash)
+  (setq solidity-flycheck-solc-checker-active t)
+  (setq flycheck-solidity-solc-addstd-contracts t)
+  (define-key solidity-mode-map (kbd "C-c C-g") 'solidity-estimate-gas-at-point))
+
+(use-package purescript-mode
+  :init
+  (with-eval-after-load "lsp-mode"
+    (add-to-list 'lsp-enabled-clients 'pursls))
+  :hook ((purescript-mode . lsp-deferred)
+         (purescript-mode . yas-minor-mode)
+         (purescript-mode . add-hook-lsp-format-buffer)
+         (purescript-mode . add-hook-lsp-organize-imports)
+         (purescript-mode . turn-on-purescript-indentation)))
+
+;; (use-package web-mode
+;;   :mode (("\\.js\\'" . web-mode)
+;;          ("\\.jsx\\'" . web-mode)
+;;          ("\\.ts\\'" . web-mode)
+;;          ("\\.tsx\\'" . web-mode)
+;;          ("\\.html\\'" . web-mode)
+;;          ("\\.vue\\'" . web-mode)
+;; 	 ("\\.json\\'" . web-mode))
+;;   :commands web-mode
+;;   :config
+;;   (setq web-mode-content-types-alist
+;; 	'(("jsx" . "\\.js[x]?\\'")))
+;;   )
+
+(use-package js
+  :init
+  (with-eval-after-load "lsp-mode"
+    (add-to-list 'lsp-enabled-clients 'ts-ls))
+  :hook ((js-mode . lsp-deferred)
+         (js-mode . yas-minor-mode)
+         (js-mode . add-hook-lsp-format-buffer)
+         (js-mode . add-hook-lsp-organize-imports)))
+
 (use-package go-mode
   :init
   (with-eval-after-load "lsp-mode"
@@ -1068,6 +1109,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   :init
   (setq company-coq-live-on-the-edge t)
   :config
+  (use-package alectryon)
   (use-package company-coq)
   (add-hook 'coq-mode-hook #'company-coq-mode)
   (add-hook 'coq-mode #'(lambda () (progn (undo-tree-mode 1))))
@@ -1247,6 +1289,8 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   :straight ispell
   :straight flyspell
   :init
+  (with-eval-after-load "lsp-mode"
+    (add-to-list 'lsp-enabled-clients 'ltex-ls))
   (add-hook 'TeX-mode-hook 'flyspell-mode)
   (add-hook 'TeX-mode-hook 'turn-on-reftex)
   (add-hook 'LaTeX-mode-hook
@@ -1256,7 +1300,9 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
               (setq TeX-save-query nil)
               (setq TeX-show-compilation t)))
   (add-hook 'LaTeX-mode-hook 'TeX-source-correlate-mode)
+  :hook ((TeX-mode . lsp-deferred))
   :config
+  (use-package lsp-latex)
   (defun BibTeX-auto-store ()
     "This function should be called from `bibtex-mode-hook'.
 It will setup BibTeX to store keys in an auto file."
@@ -1323,6 +1369,7 @@ It will setup BibTeX to store keys in an auto file."
    'org-babel-load-languages
    '((C . t)
      (shell . t)
+     (python . t)
      (ocaml . t)
      (haskell . t)
      (coq . t)
@@ -1475,6 +1522,14 @@ It will setup BibTeX to store keys in an auto file."
 (use-package elisp-mode
   :straight nil
   :bind (("C-j" . eval-last-sexp)))
+
+(use-package lean4-mode
+  :straight (lean4-mode
+	     :type git
+	     :host github
+	     :repo "leanprover/lean4-mode"
+	     :files ("*.el" "data"))
+  :commands (lean4-mode))
 
 ;; (use-package ujelly-theme
 ;;   :config

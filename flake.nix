@@ -7,11 +7,13 @@
   inputs.home-manager.inputs.nixpkgs.follows = "nixpkgs";
   inputs.nur.url = "github:nix-community/NUR";
   inputs.nur.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.lean4.url = "github:leanprover/lean4";
 
-  outputs = inputs@{ self, home-manager, nixpkgs, unstable, nur }:
+  outputs = inputs@{ self, home-manager, nixpkgs, unstable, nur, lean4 }:
     let
       overlay-unstable = final: prev: {
         unstable = unstable.legacyPackages.x86_64-linux;
+        lean4pkg = inputs.lean4.outputs.defaultPackage.x86_64-linux;
       };
     in
     {

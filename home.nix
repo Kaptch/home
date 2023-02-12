@@ -23,6 +23,19 @@ let
     debugpy
     python-lsp-server
     pip
+    pygments
+    docutils
+    alectryon
+    scikit-learn
+    matplotlib
+    seaborn
+    numpy
+    scipy
+    pandas
+    requests
+    beautifulsoup4
+    scrapy
+    web3
   ];
   python-with-my-packages = pkgs.python3.withPackages my-python-packages;
 
@@ -56,59 +69,88 @@ let
     _JAVA_AWT_WM_NONREPARENTING=1 exec ghidra
   '';
 
-  ncoq = pkgs.coq_8_15;
-  ncoqPackages = pkgs.coqPackages_8_15;
-  stdpp-dev = ncoqPackages.callPackage
-    ( { stdenv, fetchFromGitLab }:
-      stdenv.mkDerivation {
-	      name = "coq${ncoq.coq-version}-stdpp";
+  zoom-us-fix = pkgs.writeShellScriptBin "zoom-us-fix" ''
+    unset XDG_SESSION_TYPE && ~/.nix-profile/bin/zoom-us
+  '';
 
-	      src = fetchFromGitLab {
-          domain = "gitlab.mpi-sws.org";
-          owner = "iris";
-          repo = "stdpp";
-          rev = "coq-stdpp-1.8.0";
-          sha256 = "VkIGBPHevHeHCo/Q759Q7y9WyhSF/4SMht4cOPuAXHU=";
-	      };
+  ncoq = pkgs.coq_8_16;
+  ncoqPackages = pkgs.coqPackages_8_16;
+  # stdpp-dev = ncoqPackages.callPackage
+  #   ( { stdenv, fetchFromGitLab }:
+  #     stdenv.mkDerivation {
+	#       name = "coq${ncoq.coq-version}-stdpp";
 
-        preBuild = ''
-          if [[ -f coq-lint.sh ]]
-          then patchShebangs coq-lint.sh
-          fi
-        '';
+	#       src = fetchFromGitLab {
+  #         domain = "gitlab.mpi-sws.org";
+  #         owner = "iris";
+  #         repo = "stdpp";
+  #         rev = "coq-stdpp-1.8.0";
+  #         sha256 = "VkIGBPHevHeHCo/Q759Q7y9WyhSF/4SMht4cOPuAXHU=";
+	#       };
 
-	      buildInputs = with ncoq.ocamlPackages; [ ocaml camlp5 ];
-	      propagatedBuildInputs = [ ncoq ];
-	      enableParallelBuilding = true;
+  #       preBuild = ''
+  #         if [[ -f coq-lint.sh ]]
+  #         then patchShebangs coq-lint.sh
+  #         fi
+  #       '';
 
-	      installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
-      } ) { };
+	#       buildInputs = with ncoq.ocamlPackages; [ ocaml ];
+	#       propagatedBuildInputs = [ ncoq ];
+	#       enableParallelBuilding = true;
 
-  iris-dev = ncoqPackages.callPackage
-    ( { stdenv, fetchFromGitLab }:
-      stdenv.mkDerivation {
-	      name = "coq${ncoq.coq-version}-iris";
+	#       installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
+  #     } ) { };
 
-	      src = fetchFromGitLab {
-          domain = "gitlab.mpi-sws.org";
-          owner = "iris";
-          repo = "iris";
-          rev = "iris-4.0.0";
-          sha256 = "Jc9TmgGvkiDaz9IOoExyeryU1E+Q37GN24NIM397/Gg=";
-	      };
+  # iris-dev = ncoqPackages.callPackage
+  #   ( { stdenv, fetchFromGitLab }:
+  #     stdenv.mkDerivation {
+	#       name = "coq${ncoq.coq-version}-iris";
 
-        preBuild = ''
-          if [[ -f coq-lint.sh ]]
-          then patchShebangs coq-lint.sh
-          fi
-        '';
+	#       src = fetchFromGitLab {
+  #         domain = "gitlab.mpi-sws.org";
+  #         owner = "iris";
+  #         repo = "iris";
+  #         rev = "iris-4.0.0";
+  #         sha256 = "Jc9TmgGvkiDaz9IOoExyeryU1E+Q37GN24NIM397/Gg=";
+	#       };
 
-	      buildInputs = with ncoq.ocamlPackages; [ ocaml camlp5 ];
-	      propagatedBuildInputs = [ ncoq stdpp-dev ];
-	      enableParallelBuilding = true;
+  #       preBuild = ''
+  #         if [[ -f coq-lint.sh ]]
+  #         then patchShebangs coq-lint.sh
+  #         fi
+  #       '';
 
-	      installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
-      } ) { };
+	#       buildInputs = with ncoq.ocamlPackages; [ ocaml ];
+	#       propagatedBuildInputs = [ ncoq stdpp-dev ];
+	#       enableParallelBuilding = true;
+
+	#       installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
+  #     } ) { };
+
+  # hott-dev = ncoqPackages.callPackage
+  #   ( { stdenv, fetchFromGitHub }:
+  #     stdenv.mkDerivation {
+	#       name = "coq${ncoq.coq-version}-hott";
+
+	#       src = fetchFromGitHub {
+  #         owner = "HoTT";
+  #         repo = "Coq-HoTT";
+  #         rev = "V8.15";
+  #         sha256 = "JfeiRZVnrjn3SQ87y6dj9DWNwCzrkK3HBogeZARUn9g=";
+	#       };
+
+  #       preBuild = ''
+  #         if [[ -f coq-lint.sh ]]
+  #         then patchShebangs coq-lint.sh
+  #         fi
+  #       '';
+
+	#       buildInputs = with ncoq.ocamlPackages; [ ocaml camlp5 ];
+	#       propagatedBuildInputs = [ ncoq ];
+	#       enableParallelBuilding = true;
+
+	#       installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
+  #     } ) { };
 in
 {
   imports =
@@ -307,6 +349,15 @@ in
     cataclysm-dda
     chromium
     clippy
+    ncoqPackages.autosubst
+    ncoqPackages.mathcomp-ssreflect
+    ncoqPackages.equations
+    ncoqPackages.category-theory
+    ncoqPackages.metacoq
+    ncoqPackages.metacoq-pcuic
+    ncoqPackages.serapi
+    ncoqPackages.iris
+    ncoqPackages.stdpp
     crow-translate
     cutter
     davmail
@@ -342,15 +393,17 @@ in
     haskell-language-server
     helvum
     hicolor-icon-theme
+    # hott-dev
     i2p
     icu
     imagemagick
     imv
-    iris-dev
+    # iris-dev
     ispell
     jdk
     kanshi
     kismet
+    # lean4pkg
     ledger-live-desktop
     libreoffice
     lispPackages.asdf
@@ -373,6 +426,8 @@ in
     ncoq
     networkmanagerapplet
     nixopsUnstable
+    nodePackages.npm
+    nodejs
     nwg-launchers
     ocamlPackages.ocaml-lsp
     okular
@@ -408,11 +463,14 @@ in
     rustfmt
     samba
     sbcl
+    screenfetch
     signal-desktop
     slurp
+    solc
     spotify
-    stdpp-dev
+    # stdpp-dev
     steam
+    spago
     sway-contrib.grimshot
     swayidle
     swaylock-fancy
@@ -420,6 +478,7 @@ in
     system-config-printer
     tdesktop
     tex
+    ltex-ls
     thunderbird-wayland
     tmux
     (tor-browser-bundle-bin.override {
@@ -427,6 +486,7 @@ in
     })
     udisks
     unzip
+    qt6.qtwayland
     vial
     vim
     virt-manager
@@ -434,6 +494,7 @@ in
     waybar
     wdisplays
     wev
+    weylus
     wf-recorder
     wget
     wireguard-tools
@@ -451,6 +512,7 @@ in
     yubikey-personalization-gui
     yubioath-desktop
     zoom-us
+    zoom-us-fix
   ];
 
   xdg.mimeApps.defaultApplications = {
