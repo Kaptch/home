@@ -15,14 +15,7 @@
 
   services.syncthing = {
     enable = true;
-    # tray = {
-    #   enable = true;
-    #   command = "syncthingtray --wait";
-    #   package = pkgs.syncthingtray;
-    # };
   };
-
-  # systemd.user.services.syncthingtray.Service.ExecStart = lib.mkForce "${pkgs.bash}/bin/bash -c '${pkgs.coreutils}/bin/sleep 5; ${pkgs.syncthingtray-minimal}/bin/syncthingtray'";
 
   programs.ssh = {
     enable = true;
@@ -47,8 +40,6 @@
       allow-loopback-pinentry
     '';
   };
-
-  services.lorri.enable = true;
 
   services.imapnotify.enable = true;
 
@@ -88,22 +79,10 @@
     };
   };
 
-  # services.gammastep = {
-  #   enable = true;
-  #   dawnTime = "6:00-7:45";
-  #   duskTime = "18:35-20:15";
-  #   # tray = true;
-  #   settings = {
-  #     general = {
-  #       adjustment-method = "wayland";
-  #     };
-  #   };
-  # };
-
   programs.mako = {
     enable = true;
     layer = "overlay";
-    font = "IBM Plex 13";
+    font = "Ubuntu Nerd Font";
     width = 500;
     height = 80;
     defaultTimeout = 10000;
@@ -118,18 +97,18 @@
   systemd.user.services.davmail = {
     Unit = {
       Description = "Davmail gateway";
-      Documentation = "man:davmail(1)";
       After = [ "network.target" ];
     };
     Install = {
-      WantedBy = [ "multi-user.target" ];
+      WantedBy = [ "network.target" ];
     };
     Service = {
       Type = "simple";
-      ExecStart = "${pkgs.davmail}/bin/davmail";
+      RemainAfterExit= "no";
+      ExecStart = "${pkgs.jre}/bin/java -jar ${pkgs.davmail}/share/davmail/davmail.jar";
+      ExecStop = "killall davmail";
       RestartSec = 5;
       Restart = "always";
-      LogsDirectory = "davmail";
     };
   };
 
@@ -147,19 +126,4 @@
       WantedBy = [ "sway-session.target" ];
     };
   };
-
-  # Broken for now
-  # systemd.user.services.crow = {
-  #   Unit = {
-  #     Description = "Crow Translator";
-  #     BindsTo = [ "sway-session.target" ];
-  #     After = [ "sway-session.target" ];
-  #   };
-  #   Service = {
-  #     ExecStart = "${pkgs.crow-translate}/bin/crow";
-  #   };
-  #   Install = {
-  #     WantedBy = [ "sway-session.target" ];
-  #   };
-  # };
 }

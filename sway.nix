@@ -17,6 +17,7 @@ in
       modifier = "Mod4";
       bars = [ ];
       startup = [{ command = "mako"; }];
+      bindkeysToCode = true;
       keybindings =
         let
           screenshot_dir =

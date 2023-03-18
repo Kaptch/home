@@ -3,53 +3,48 @@
 let
   tex = (pkgs.texlive.combine {
     inherit (pkgs.texlive) scheme-full
-      gentium-tug
-      pbox
-      scalerel
-      dashbox
-      xifthen
-      ifmtarg
+      biber
       biblatex
       cleveref
-      biber
+      dashbox
+      environ
+      gentium-tug
+      ifmtarg
       iftex
-      xstring
+      pbox
+      scalerel
       totpages
-      environ;
+      xifthen
+      xstring;
   });
 
   my-python-packages = python-packages: with python-packages; [
-    jupyter
+    alectryon
+    beautifulsoup4
     debugpy
-    python-lsp-server
+    docutils
+    jupyter
+    matplotlib
+    numpy
+    pandas
     pip
     pygments
-    docutils
-    alectryon
-    scikit-learn
-    matplotlib
-    seaborn
-    numpy
-    scipy
-    pandas
+    python-lsp-server
     requests
-    beautifulsoup4
+    scikit-learn
+    scipy
     scrapy
+    seaborn
     web3
   ];
   python-with-my-packages = pkgs.python3.withPackages my-python-packages;
 
   pass = pkgs.pass.override { waylandSupport = true; };
   pass-ext = pass.withExtensions (ext: [ ext.pass-import
+                                         ext.pass-genphrase
+                                         ext.pass-otp
                                          ext.pass-update
                                          ext.pass-tomb]);
-
-  dwarf-fortress = pkgs.dwarf-fortress-packages.dwarf-fortress-full.override {
-    dfVersion = "0.47.05";
-    theme = pkgs.dwarf-fortress-packages.themes.phoebus;
-    enableIntro = false;
-    enableFPS = true;
-  };
 
   pidgin-with-plugins = pkgs.pidgin.override {
     plugins = [ pkgs.pidgin-otr pkgs.pidgin-latex ];
@@ -75,82 +70,6 @@ let
 
   ncoq = pkgs.coq_8_16;
   ncoqPackages = pkgs.coqPackages_8_16;
-  # stdpp-dev = ncoqPackages.callPackage
-  #   ( { stdenv, fetchFromGitLab }:
-  #     stdenv.mkDerivation {
-	#       name = "coq${ncoq.coq-version}-stdpp";
-
-	#       src = fetchFromGitLab {
-  #         domain = "gitlab.mpi-sws.org";
-  #         owner = "iris";
-  #         repo = "stdpp";
-  #         rev = "coq-stdpp-1.8.0";
-  #         sha256 = "VkIGBPHevHeHCo/Q759Q7y9WyhSF/4SMht4cOPuAXHU=";
-	#       };
-
-  #       preBuild = ''
-  #         if [[ -f coq-lint.sh ]]
-  #         then patchShebangs coq-lint.sh
-  #         fi
-  #       '';
-
-	#       buildInputs = with ncoq.ocamlPackages; [ ocaml ];
-	#       propagatedBuildInputs = [ ncoq ];
-	#       enableParallelBuilding = true;
-
-	#       installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
-  #     } ) { };
-
-  # iris-dev = ncoqPackages.callPackage
-  #   ( { stdenv, fetchFromGitLab }:
-  #     stdenv.mkDerivation {
-	#       name = "coq${ncoq.coq-version}-iris";
-
-	#       src = fetchFromGitLab {
-  #         domain = "gitlab.mpi-sws.org";
-  #         owner = "iris";
-  #         repo = "iris";
-  #         rev = "iris-4.0.0";
-  #         sha256 = "Jc9TmgGvkiDaz9IOoExyeryU1E+Q37GN24NIM397/Gg=";
-	#       };
-
-  #       preBuild = ''
-  #         if [[ -f coq-lint.sh ]]
-  #         then patchShebangs coq-lint.sh
-  #         fi
-  #       '';
-
-	#       buildInputs = with ncoq.ocamlPackages; [ ocaml ];
-	#       propagatedBuildInputs = [ ncoq stdpp-dev ];
-	#       enableParallelBuilding = true;
-
-	#       installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
-  #     } ) { };
-
-  # hott-dev = ncoqPackages.callPackage
-  #   ( { stdenv, fetchFromGitHub }:
-  #     stdenv.mkDerivation {
-	#       name = "coq${ncoq.coq-version}-hott";
-
-	#       src = fetchFromGitHub {
-  #         owner = "HoTT";
-  #         repo = "Coq-HoTT";
-  #         rev = "V8.15";
-  #         sha256 = "JfeiRZVnrjn3SQ87y6dj9DWNwCzrkK3HBogeZARUn9g=";
-	#       };
-
-  #       preBuild = ''
-  #         if [[ -f coq-lint.sh ]]
-  #         then patchShebangs coq-lint.sh
-  #         fi
-  #       '';
-
-	#       buildInputs = with ncoq.ocamlPackages; [ ocaml camlp5 ];
-	#       propagatedBuildInputs = [ ncoq ];
-	#       enableParallelBuilding = true;
-
-	#       installFlags = [ "COQLIB=$(out)/lib/coq/${ncoq.coq-version}/" ];
-  #     } ) { };
 in
 {
   imports =
@@ -164,6 +83,7 @@ in
       ./waybar.nix
       ./sway.nix
       ./services.nix
+      ./vim.nix
       ./wlogout.nix
       ./zathura.nix
     ];
@@ -195,7 +115,26 @@ in
     enable = true;
   };
   programs.mu.enable = true;
-  programs.neovim.enable = true;
+  programs.vscode = {
+    enable = true;
+    package = pkgs.vscodium;
+    enableUpdateCheck = false;
+    enableExtensionUpdateCheck = false;
+    extensions = with pkgs.vscode-extensions; [
+      github.codespaces
+      github.copilot
+      matklad.rust-analyzer
+      mkhl.direnv
+      kahole.magit
+      vadimcn.vscode-lldb
+      bungcip.better-toml
+      ms-vsliveshare.vsliveshare
+      ocamllabs.ocaml-platform
+      james-yu.latex-workshop
+      dracula-theme.theme-dracula
+      pkgs.coq-lsp-pkg.packages.${pkgs.system}.vscode-extension
+    ];
+  };
   programs.neomutt = {
     enable = true;
     sidebar.enable = true;
@@ -298,14 +237,11 @@ in
     };
   };
 
-  # nixpkgs.config.permittedInsecurePackages = [
-  # ];
-
-  # nixpkgs.overlays = [
-  #   (self: super: {
-  #     hiedb = pkgs.haskell.lib.dontCheck super.hiedb;
-  #   })
-  # ];
+  nixpkgs.overlays = [
+    (self: super: {
+      keepassxc = super.keepassxc.override { withKeePassX11 = false; };
+    })
+  ];
 
   nixpkgs.config.allowUnfreePredicate =
     pkg: builtins.elem (lib.getName pkg) [ "steam-original"
@@ -317,6 +253,10 @@ in
                                            "spotify"
                                            "spotify-unwrapped"
                                            "dwarf-fortress"
+                                           "postman"
+                                           "vscode-extension-github-codespaces"
+                                           "vscode-extension-github-copilot"
+                                           "vscode-extension-ms-vsliveshare-vsliveshare"
                                          ];
 
   nixpkgs.config.permittedInsecurePackages = [
@@ -327,12 +267,13 @@ in
   home.username = "kaptch";
   home.homeDirectory = "/home/kaptch";
   home.packages = with pkgs; [
+    # lean4pkg
+    master.coqPackages_8_16.coq-lsp
     agda
     aircrack-ng
     alacritty
     anki-bin
     ardour
-    authenticator
     baobab
     bemenu
     bettercap
@@ -340,8 +281,8 @@ in
     bitwarden
     bitwarden-cli
     blender
-    btop
     brightnessctl
+    btop
     cabal-install
     cage
     cargo
@@ -349,15 +290,6 @@ in
     cataclysm-dda
     chromium
     clippy
-    ncoqPackages.autosubst
-    ncoqPackages.mathcomp-ssreflect
-    ncoqPackages.equations
-    ncoqPackages.category-theory
-    ncoqPackages.metacoq
-    ncoqPackages.metacoq-pcuic
-    ncoqPackages.serapi
-    ncoqPackages.iris
-    ncoqPackages.stdpp
     crow-translate
     cutter
     davmail
@@ -366,7 +298,6 @@ in
     discord
     docker-compose
     dsniff
-    dwarf-fortress
     element-desktop
     emacs-all-the-icons-fonts
     emacsopen
@@ -388,28 +319,26 @@ in
     gpa
     grim
     grub
-    gtklp
     gtk-layer-shell
+    gtklp
     haskell-language-server
-    helvum
+    unstable.helvum
     hicolor-icon-theme
-    # hott-dev
-    i2p
+    i2pd
     icu
     imagemagick
     imv
-    # iris-dev
     ispell
     jdk
     kanshi
     kismet
-    # lean4pkg
     ledger-live-desktop
     libreoffice
     lispPackages.asdf
     lispPackages.quicklisp
     llvm
     llvm-manpages
+    ltex-ls
     lutris
     macchanger
     mako
@@ -417,22 +346,28 @@ in
     mattermost-fix
     meson
     metasploit
-    prismlauncher
     mkchromecast
     monero-gui
     mpv
-    mutt
     mycrypto
     ncoq
+    ncoqPackages.autosubst
+    ncoqPackages.category-theory
+    ncoqPackages.equations
+    ncoqPackages.iris
+    ncoqPackages.mathcomp-ssreflect
+    ncoqPackages.metacoq
+    ncoqPackages.metacoq-pcuic
+    ncoqPackages.serapi
+    ncoqPackages.stdpp
+    neovide
     networkmanagerapplet
     nixopsUnstable
-    nodePackages.npm
-    nodejs
     nwg-launchers
     ocamlPackages.ocaml-lsp
     okular
     openssl
-    ott
+    otpclient
     pamixer
     papirus-icon-theme
     parted
@@ -444,7 +379,8 @@ in
     pinentry-emacs
     pkg-config
     playerctl
-    profanity
+    postman
+    prismlauncher
     proton-caller
     protontricks
     prusa-slicer
@@ -468,9 +404,7 @@ in
     slurp
     solc
     spotify
-    # stdpp-dev
     steam
-    spago
     sway-contrib.grimshot
     swayidle
     swaylock-fancy
@@ -478,17 +412,16 @@ in
     system-config-printer
     tdesktop
     tex
-    ltex-ls
     thunderbird-wayland
     tmux
+    tor
     (tor-browser-bundle-bin.override {
       useHardenedMalloc = false;
     })
+    qt6.qtwayland
     udisks
     unzip
-    qt6.qtwayland
     vial
-    vim
     virt-manager
     vlc
     waybar

@@ -109,14 +109,14 @@ window#waybar {
       layer = "top";
       position = "top";
       modules-center = [
-        "sway/window"
+        # "sway/window"
       ];
       modules-left = [
         "sway/workspaces"
         "sway/language"
         "custom/screen"
-        "tray"
         "sway/mode"
+        "tray"
       ];
       modules-right = [
         "pulseaudio"
@@ -209,7 +209,6 @@ window#waybar {
         on-click = "${pkgs.pavucontrol}/bin/pavucontrol";
       };
       "sway/mode" = {
-        # format = ''<span style="italic">{}</span>'';
         format = " {}";
         max-length = 50;
       };

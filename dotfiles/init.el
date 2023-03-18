@@ -1110,7 +1110,9 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
   (setq company-coq-live-on-the-edge t)
   :config
   (use-package alectryon)
-  (use-package company-coq)
+  (use-package company-coq
+    :custom
+    (company-coq-disabled-features '(prettify-symbols)))
   (add-hook 'coq-mode-hook #'company-coq-mode)
   (add-hook 'coq-mode #'(lambda () (progn (undo-tree-mode 1))))
   :custom
@@ -1298,7 +1300,7 @@ and file 'filename' will be opened and cursor set on line 'linenumber'"
               (add-to-list 'TeX-command-list
                            '("XeLaTeX" "%`xelatex%(mode)%' %t" TeX-run-TeX nil t))
               (setq TeX-save-query nil)
-              (setq TeX-show-compilation t)))
+              (setq TeX-show-compilation nil)))
   (add-hook 'LaTeX-mode-hook 'TeX-source-correlate-mode)
   :hook ((TeX-mode . lsp-deferred))
   :config
@@ -1343,19 +1345,27 @@ It will setup BibTeX to store keys in an auto file."
   (setq TeX-PDF-mode t
         TeX-source-correlate-mode t
 	TeX-source-correlate-start-server t)
-  ;; (add-to-list 'TeX-view-program-list
-  ;;              '("Zathura"
-  ;;                ("zathura %o"
-  ;;       	  (mode-io-correlate " --synctex-forward %n:0:\"%b\" -x \"emacsclient --socket-name=%sn +%{line} %{input}\""))
-  ;;                "zathura"))
-  ;; (setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Zathura")
-  (setq TeX-view-program-selection '((output-pdf "PDF Tools"))
-        TeX-source-correlate-start-server t)
+  (add-to-list 'TeX-view-program-list
+               '("Zathura"
+                 ("zathura %o"
+        	  (mode-io-correlate " --synctex-forward %n:0:\"%b\" -x \"emacsclient --socket-name=%sn +%{line} %{input}\""))
+                 "zathura"))
+  (setcar (cdr (assoc 'output-pdf TeX-view-program-selection)) "Zathura")
+  ;; (setq TeX-view-program-selection '((output-pdf "PDF Tools"))
+  ;;       TeX-source-correlate-start-server t)
 
   (add-hook 'TeX-after-compilation-finished-functions
             #'TeX-revert-document-buffer)
   :bind
   (("C-c q" . pdf-sync-forward)))
+
+(use-package latex-change-env
+  :after latex
+  :commands latex-change-env
+  :bind (:map LaTeX-mode-map ("C-c r" . latex-change-env))
+  :custom
+  (latex-change-env-math-display '("\\[" . "\\]"))
+  (latex-change-env-math-inline  '("$"   . "$")))
 
 (use-package ob-async)
 
@@ -1530,6 +1540,11 @@ It will setup BibTeX to store keys in an auto file."
 	     :repo "leanprover/lean4-mode"
 	     :files ("*.el" "data"))
   :commands (lean4-mode))
+
+;; (use-package codegpt
+;;   :custom
+;;   (codegpt (getenv "OPENAI_API_KEY"))
+;;   (codegpt-focus-p nil))
 
 ;; (use-package ujelly-theme
 ;;   :config
